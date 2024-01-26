@@ -1,0 +1,5 @@
+node_modules
+.DS_Store
+auth_info_baileys/
+session_auth_info/
+.env
