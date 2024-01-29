@@ -17,7 +17,7 @@ const {
   msgRetryCounterMap,
 } = require("@whiskeysockets/baileys");
 
-const { phoneNumberFormatter } = require("./helpers/formatter");
+// const { phoneNumberFormatter } = require("./helpers/formatter");
 
 const useMongoDBAuthState = require("./mongoAuthState");
 const mongoURL =
@@ -288,8 +288,8 @@ const isConnected = () => {
  */
 app.get("/send-message", async (req, res) => {
   const tempMessage = req.query.message;
-  // const number = req.query.number;
-  const number = phoneNumberFormatter(req.query.number);
+  const number = req.query.number;
+  // const number = phoneNumberFormatter(req.query.number);
   console.log(tempMessage, number);
 
   const mongoClient = new MongoClient(mongoURL, {
