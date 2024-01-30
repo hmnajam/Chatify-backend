@@ -162,13 +162,13 @@ async function connectToWhatsApp() {
       try {
         if (type === "notify") {
           if (!messages[0]?.key.fromMe) {
-            const captureMessage = messages[0]?.message?.conversation;
+            // const captureMessage = messages[0]?.message?.conversation;
+            // console.log("Captured a message: ", captureMessage);
             const numberWa = messages[0]?.key?.remoteJid;
-            console.log(captureMessage, numberWa);
-
-            const compareMessage = captureMessage.toLocaleLowerCase();
-
-            if (compareMessage === "ping") {
+            // const compareMessage = captureMessage.toLowerCase();
+            // console.log('Capturing a received message:', compareMessage, numberWa);
+            // if (captureMessage.toLowerCase() === "ping") {
+            if (messages[0]?.message?.conversation.toLowerCase() === "ping") {
               await sock.sendMessage(
                 numberWa,
                 {
@@ -178,18 +178,13 @@ async function connectToWhatsApp() {
                   quoted: messages[0],
                 }
               );
+            } else {
+              console.log(
+                "Received message in not ping:",
+                captureMessage,
+                numberWa
+              );
             }
-            // else {
-            //   await sock.sendMessage(
-            //     numberWa,
-            //     {
-            //       text: "Message Received.",
-            //     },
-            //     {
-            //       quoted: messages[0],
-            //     }
-            //   );
-            // }
           }
         }
       } catch (error) {
@@ -296,7 +291,6 @@ const isConnected = () => {
 app.get("/send-message", async (req, res) => {
   const tempMessage = req.query.message;
   const number = req.query.number;
-  // const number = phoneNumberFormatter(req.query.number);
   console.log(tempMessage, number);
 
   const mongoClient = new MongoClient(mongoURL, {
