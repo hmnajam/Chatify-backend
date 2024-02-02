@@ -179,7 +179,11 @@ async function connectToWhatsApp() {
                 }
               );
             } else {
-              console.log("Received message in not ping:", numberWa);
+              console.log(
+                "Received message in not ping:",
+                captureMessage,
+                numberWa
+              );
             }
           }
         }
