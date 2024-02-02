@@ -48,7 +48,9 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 const server = require("http").createServer(app);
 const io = require("socket.io")(server);
-const port = process.env.PORT || 8000;
+require("dotenv").config();
+const port = process.env.PORT || 7000;
+console.log(port);
 const qrcode = require("qrcode");
 app.use("/assets", express.static(__dirname + "/client/assets"));
 
@@ -294,10 +296,18 @@ app.get("/send-message", async (req, res) => {
     useUnifiedTopology: true,
   });
   await mongoClient.connect();
+
+  const database = process.env.Database || "whatsapp_api";
+  const table = process.env.Collection || "sent_messages";
+  console.log("Databse is", database, "and collection is", table);
+
   // New connection for sent messages.
-  const messagesCollection = mongoClient
-    .db("whatsapp_api")
-    .collection("sent_messages");
+  // const messagesCollection = mongoClient
+  //   .db("whatsapp_api")
+  //   .collection("sent_messages");
+
+  // New connection for sent messages with env values.
+  const messagesCollection = mongoClient.db(database).collection(table);
 
   let numberWA;
   try {
@@ -329,6 +339,12 @@ app.get("/send-message", async (req, res) => {
                 console.log("Message saved to database successfully");
               } catch (error) {
                 console.error("Error saving message to database:", error);
+              }
+
+              try {
+                console.log('something something');
+              } catch (error) {
+                console.error("Error sending message:", error);
               }
 
               // Send the response
@@ -432,5 +448,5 @@ app.use(
 );
 
 server.listen(port, () => {
-  console.log("Server Run Port : " + port);
+  console.log("Server Running on Port : " + port);
 });
