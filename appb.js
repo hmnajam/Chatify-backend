@@ -17,33 +17,6 @@ const {
   msgRetryCounterMap,
 } = require("@whiskeysockets/baileys");
 
-// Postgres connection definition
-const { Pool } = require("pg");
-require("dotenv").config();
-
-let { PGHOST, PGDATABASE, PGUSER, PGPASSWORD } = process.env;
-
-const pool = new Pool({
-  host: PGHOST,
-  database: PGDATABASE,
-  username: PGUSER,
-  password: PGPASSWORD,
-  port: 5432,
-  ssl: {
-    require: true,
-  },
-});
-
-async function getPgVersion() {
-  const client = await pool.connect();
-  try {
-    const result = await client.query("SELECT version()");
-    console.log(result.rows[0]);
-  } finally {
-    client.release();
-  }
-}
-
 const useMongoDBAuthState = require("./mongoAuthState");
 const mongoURL =
   "mongodb+srv://najam1:cGxJ0o74fNAXDg4t@cluster0.sxwdi4w.mongodb.net/?retryWrites=true&w=majority";
@@ -69,7 +42,6 @@ app.use(
     createParentPath: true,
   })
 );
-
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -81,6 +53,7 @@ console.log(port);
 const qrcode = require("qrcode");
 app.use("/assets", express.static(__dirname + "/client/assets"));
 
+// Home page
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/index.html");
   // res.send("server working");
@@ -109,7 +82,6 @@ app.get("/scan", (req, res) => {
 let sock;
 let qrDinamic;
 let soket;
-
 async function connectToWhatsApp() {
   try {
     // const { state, saveCreds } = await useMultiFileAuthState("session_auth_info");
@@ -123,9 +95,6 @@ async function connectToWhatsApp() {
       .db("whatsapp_api")
       .collection("auth_info_baileys");
     const { state, saveCreds } = await useMongoDBAuthState(collection);
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Baileys Connection Timeout")), 5000)
-    );
 
     sock = makeWASocket({
       browser: Browsers.macOS("Chatify"),
@@ -177,19 +146,11 @@ async function connectToWhatsApp() {
         }
       });
     });
-
-    // await Promise.race([timeoutPromise, connectionPromise]);
-
     sock.ev.on("messages.upsert", async ({ messages, type }) => {
       try {
         if (type === "notify") {
           if (!messages[0]?.key.fromMe) {
-            // const captureMessage = messages[0]?.message?.conversation;
-            // console.log("Captured a message: ", captureMessage);
             const numberWa = messages[0]?.key?.remoteJid;
-            // const compareMessage = captureMessage.toLowerCase();
-            // console.log('Capturing a received message:', compareMessage, numberWa);
-            // if (captureMessage.toLowerCase() === "ping") {
             if (messages[0]?.message?.conversation.toLowerCase() === "ping") {
               await sock.sendMessage(
                 numberWa,
@@ -213,7 +174,7 @@ async function connectToWhatsApp() {
     sock.ev.on("creds.update", saveCreds);
   } catch {
     // console.log("Error connecting to WhatsApp:", error);
-    console.log("Error connecting to WhatsApp:");
+    console.log("Error connecting to WhatsApp:", error);
   }
 }
 
@@ -310,13 +271,11 @@ app.get("/send-message", async (req, res) => {
   const tempMessage = req.query.message;
   const number = req.query.number;
   console.log(tempMessage, number);
-
   const mongoClient = new MongoClient(mongoURL, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   });
   await mongoClient.connect();
-
   const database = process.env.Database || "whatsapp_api";
   const table = process.env.Collection || "sent_messages";
   console.log("Databse is", database, "and collection is", table);
@@ -360,27 +319,6 @@ app.get("/send-message", async (req, res) => {
               } catch (error) {
                 console.error("Error saving message to database:", error);
               }
-
-              // try {
-              //   const client = await pool.connect();
-              //   try {
-              //     // Insert message into PostgreSQL
-              //     const insertQuery = `
-              //       INSERT INTO your_messages_table (sender, recipient, message, timestamp)
-              //       VALUES ($1, $2, $3, $4)
-              //     `;
-              //     const values = [sock.user.id, numberWA, tempMessage, new Date()];
-
-              //     await client.query(insertQuery, values);
-
-              //     console.log("Message saved to PostgreSQL database successfully");
-              //   } finally {
-              //     client.release();
-              //   }
-              // } catch (error) {
-              //   console.error("Error saving message to PostgreSQL:", error);
-              // }
-
               // Send the response
               res.status(200).json({
                 status: true,
