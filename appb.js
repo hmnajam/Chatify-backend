@@ -17,6 +17,33 @@ const {
   msgRetryCounterMap,
 } = require("@whiskeysockets/baileys");
 
+// Postgres connection definition
+const { Pool } = require("pg");
+require("dotenv").config();
+
+let { PGHOST, PGDATABASE, PGUSER, PGPASSWORD } = process.env;
+
+const pool = new Pool({
+  host: PGHOST,
+  database: PGDATABASE,
+  username: PGUSER,
+  password: PGPASSWORD,
+  port: 5432,
+  ssl: {
+    require: true,
+  },
+});
+
+async function getPgVersion() {
+  const client = await pool.connect();
+  try {
+    const result = await client.query("SELECT version()");
+    console.log(result.rows[0]);
+  } finally {
+    client.release();
+  }
+}
+
 const useMongoDBAuthState = require("./mongoAuthState");
 const mongoURL =
   "mongodb+srv://najam1:cGxJ0o74fNAXDg4t@cluster0.sxwdi4w.mongodb.net/?retryWrites=true&w=majority";
@@ -87,7 +114,6 @@ async function connectToWhatsApp() {
   try {
     // const { state, saveCreds } = await useMultiFileAuthState("session_auth_info");
     // const { state, saveCreds } = await useMultiFileAuthState("auth_info_baileys");
-
     const mongoClient = new MongoClient(mongoURL, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
@@ -96,18 +122,13 @@ async function connectToWhatsApp() {
     const collection = mongoClient
       .db("whatsapp_api")
       .collection("auth_info_baileys");
-    // New connection for sent messages.
-    // const messagesCollection = mongoClient
-    //   .db("whatsapp_api")
-    //   .collection("sent_messages");
-
     const { state, saveCreds } = await useMongoDBAuthState(collection);
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error("Baileys Connection Timeout")), 5000)
     );
 
     sock = makeWASocket({
-      browser: Browsers.macOS("Chatterly"),
+      browser: Browsers.macOS("Chatify"),
       printQRInTerminal: true,
       auth: state,
       logger: log({ level: "silent" }),
@@ -151,14 +172,13 @@ async function connectToWhatsApp() {
           }
         } else if (connection === "open") {
           console.log("Connected ");
-
           resolve();
           return;
         }
       });
     });
 
-    await Promise.race([timeoutPromise, connectionPromise]);
+    // await Promise.race([timeoutPromise, connectionPromise]);
 
     sock.ev.on("messages.upsert", async ({ messages, type }) => {
       try {
@@ -192,12 +212,12 @@ async function connectToWhatsApp() {
 
     sock.ev.on("creds.update", saveCreds);
   } catch {
-    console.log("Error connecting to WhatsApp:", error);
+    // console.log("Error connecting to WhatsApp:", error);
+    console.log("Error connecting to WhatsApp:");
   }
 }
 
-// This is
-// Corrected Function to retrieve all messages from MongoDB
+// Function to retrieve all messages from MongoDB
 async function getAllMessagesFromDB() {
   try {
     const mongoClient = new MongoClient(mongoURL, {
@@ -341,11 +361,25 @@ app.get("/send-message", async (req, res) => {
                 console.error("Error saving message to database:", error);
               }
 
-              try {
-                console.log('something something');
-              } catch (error) {
-                console.error("Error sending message:", error);
-              }
+              // try {
+              //   const client = await pool.connect();
+              //   try {
+              //     // Insert message into PostgreSQL
+              //     const insertQuery = `
+              //       INSERT INTO your_messages_table (sender, recipient, message, timestamp)
+              //       VALUES ($1, $2, $3, $4)
+              //     `;
+              //     const values = [sock.user.id, numberWA, tempMessage, new Date()];
+
+              //     await client.query(insertQuery, values);
+
+              //     console.log("Message saved to PostgreSQL database successfully");
+              //   } finally {
+              //     client.release();
+              //   }
+              // } catch (error) {
+              //   console.error("Error saving message to PostgreSQL:", error);
+              // }
 
               // Send the response
               res.status(200).json({
