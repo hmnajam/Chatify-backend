@@ -49,7 +49,6 @@ const server = require("http").createServer(app);
 const io = require("socket.io")(server);
 require("dotenv").config();
 const port = process.env.PORT || 7000;
-console.log(port);
 const qrcode = require("qrcode");
 app.use("/assets", express.static(__dirname + "/client/assets"));
 
@@ -82,19 +81,23 @@ app.get("/scan", (req, res) => {
 let sock;
 let qrDinamic;
 let soket;
+
+// Defining mongoClient for mongodb connection
+const mongoClient = new MongoClient(mongoURL, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  },
+});
+
 async function connectToWhatsApp() {
   try {
     // const mongoClient = new MongoClient(mongoURL, {
     //   useNewUrlParser: true,
     //   useUnifiedTopology: true,
     // });
-    const mongoClient = new MongoClient(mongoURL, {
-      serverApi: {
-        version: ServerApiVersion.v1,
-        strict: true,
-        deprecationErrors: true,
-      },
-    });
+
     await mongoClient.connect();
     const collection = mongoClient
       .db("whatsapp_api")
@@ -186,10 +189,10 @@ async function connectToWhatsApp() {
 // Function to retrieve all messages from MongoDB
 async function getAllMessagesFromDB() {
   try {
-    const mongoClient = new MongoClient(mongoURL, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    // const mongoClient = new MongoClient(mongoURL, {
+    //   useNewUrlParser: true,
+    //   useUnifiedTopology: true,
+    // });
     const allMessages = await mongoClient
       .db("whatsapp_api")
       .collection("sent_messages")
@@ -276,10 +279,10 @@ app.get("/send-message", async (req, res) => {
   const tempMessage = req.query.message;
   const number = req.query.number;
   console.log(tempMessage, number);
-  const mongoClient = new MongoClient(mongoURL, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  });
+  // const mongoClient = new MongoClient(mongoURL, {
+  //   useNewUrlParser: true,
+  //   useUnifiedTopology: true,
+  // });
   await mongoClient.connect();
   const database = process.env.Database || "whatsapp_api";
   const table = process.env.Collection || "sent_messages";
