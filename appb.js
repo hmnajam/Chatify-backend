@@ -22,7 +22,7 @@ const mongoURL =
   "mongodb+srv://najam1:cGxJ0o74fNAXDg4t@cluster0.sxwdi4w.mongodb.net/?retryWrites=true&w=majority";
 // const mongoURL = `mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_CLUSTER}`;
 console.log("I am mongo Url", mongoURL);
-const { MongoClient } = require("mongodb");
+const { MongoClient, ServerApiVersion } = require("mongodb");
 
 const log = (pino = require("pino"));
 const { session } = { session: "session_auth_info" };
@@ -84,11 +84,16 @@ let qrDinamic;
 let soket;
 async function connectToWhatsApp() {
   try {
-    // const { state, saveCreds } = await useMultiFileAuthState("session_auth_info");
-    // const { state, saveCreds } = await useMultiFileAuthState("auth_info_baileys");
+    // const mongoClient = new MongoClient(mongoURL, {
+    //   useNewUrlParser: true,
+    //   useUnifiedTopology: true,
+    // });
     const mongoClient = new MongoClient(mongoURL, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+      serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+      },
     });
     await mongoClient.connect();
     const collection = mongoClient
