@@ -278,7 +278,7 @@ const isConnected = () => {
 app.get("/send-message", async (req, res) => {
   const tempMessage = req.query.message;
   const number = req.query.number;
-  console.log('Message:', tempMessage, 'Number:', number);
+  console.log("Message:", tempMessage, "Number:", number);
   // const mongoClient = new MongoClient(mongoURL, {
   //   useNewUrlParser: true,
   //   useUnifiedTopology: true,
