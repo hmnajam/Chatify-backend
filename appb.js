@@ -189,15 +189,18 @@ async function connectToWhatsApp() {
 // Function to retrieve all messages from MongoDB
 async function getAllMessagesFromDB() {
   try {
-    // const mongoClient = new MongoClient(mongoURL, {
-    //   useNewUrlParser: true,
-    //   useUnifiedTopology: true,
-    // });
     const allMessages = await mongoClient
       .db("whatsapp_api")
       .collection("sent_messages")
-      .find()
+      .find(
+        {},
+        { projection: { recipient: 1, message: 1, timestamp: 1, _id: 0 } }
+      )
+      .sort({ timestamp: -1 }) // Sort in descending order based on timestamp
+      .limit(20) // Limit the result to the last 20 messages
       .toArray();
+
+    console.log(allMessages);
     return allMessages;
   } catch (error) {
     console.error("Error retrieving messages from database:", error);
@@ -209,16 +212,16 @@ app.get("/get-all-messages", async (req, res) => {
   try {
     const allMessages = await getAllMessagesFromDB();
     // Extracting only 'recipient' and 'message' fields
-    const simplifiedMessages = allMessages.map(({ recipient, message }) => ({
-      recipient,
-      message,
-    }));
+    // const simplifiedMessages = allMessages.map(({ recipient, message }) => ({
+    //   recipient,
+    //   message,
+    // }));
     res.setHeader("Content-Type", "application/json");
     res.status(200).send(
       JSON.stringify(
         {
           status: true,
-          response: simplifiedMessages,
+          response: allMessages,
         },
         null,
         2
