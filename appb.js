@@ -87,6 +87,7 @@ const mongoClient = new MongoClient(mongoURL, {
 
 async function connectToWhatsApp() {
   try {
+    console.log('Initiating whtsapp connection');
     await mongoClient.connect();
     const collection = mongoClient
       .db("whatsapp_api")
