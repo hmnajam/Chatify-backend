@@ -16,14 +16,6 @@ const {
   useMultiFileAuthState,
   msgRetryCounterMap,
 } = require("@whiskeysockets/baileys");
-
-const useMongoDBAuthState = require("./mongoAuthState");
-const mongoURL =
-  "mongodb+srv://najam1:cGxJ0o74fNAXDg4t@cluster0.sxwdi4w.mongodb.net/?retryWrites=true&w=majority";
-// const mongoURL = `mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_CLUSTER}`;
-console.log("I am mongo Url", mongoURL);
-const { MongoClient, ServerApiVersion } = require("mongodb");
-
 const log = (pino = require("pino"));
 const { session } = { session: "session_auth_info" };
 const { Boom } = require("@hapi/boom");
@@ -32,11 +24,14 @@ const fs = require("fs");
 const express = require("express");
 const fileUpload = require("express-fileupload");
 const cors = require("cors");
+require("dotenv").config();
+const mongoURL = `mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_CLUSTER}`;
+const useMongoDBAuthState = require("./mongoAuthState");
+const { MongoClient, ServerApiVersion } = require("mongodb");
 const bodyParser = require("body-parser");
 (swaggerJsdoc = require("swagger-jsdoc")),
   (swaggerUi = require("swagger-ui-express"));
 const app = require("express")();
-// enable files upload
 app.use(
   fileUpload({
     createParentPath: true,
@@ -45,12 +40,11 @@ app.use(
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use("/assets", express.static(__dirname + "/client/assets"));
 const server = require("http").createServer(app);
 const io = require("socket.io")(server);
-require("dotenv").config();
 const port = process.env.PORT || 7000;
 const qrcode = require("qrcode");
-app.use("/assets", express.static(__dirname + "/client/assets"));
 
 // Home page
 app.get("/", (req, res) => {
@@ -93,11 +87,6 @@ const mongoClient = new MongoClient(mongoURL, {
 
 async function connectToWhatsApp() {
   try {
-    // const mongoClient = new MongoClient(mongoURL, {
-    //   useNewUrlParser: true,
-    //   useUnifiedTopology: true,
-    // });
-
     await mongoClient.connect();
     const collection = mongoClient
       .db("whatsapp_api")
@@ -154,34 +143,37 @@ async function connectToWhatsApp() {
         }
       });
     });
+
     sock.ev.on("messages.upsert", async ({ messages, type }) => {
       try {
-        if (type === "notify") {
-          if (!messages[0]?.key.fromMe) {
-            const numberWa = messages[0]?.key?.remoteJid;
-            if (messages[0]?.message?.conversation.toLowerCase() === "ping") {
-              await sock.sendMessage(
-                numberWa,
-                {
-                  text: "Pong",
-                },
-                {
-                  quoted: messages[0],
-                }
-              );
-            } else {
-              console.log("Received message in not ping:", numberWa);
-            }
+        if (type === "notify" && !messages[0]?.key.fromMe) {
+          const { key, message } = messages[0];
+          const { extendedTextMessage } = message;
+          if (
+            extendedTextMessage &&
+            extendedTextMessage.text.toLowerCase() === "ping"
+          ) {
+            console.log("Received ping, sending pong.");
+            await sock.sendMessage(
+              key.remoteJid,
+              { text: "Pong" },
+              { quoted: messages[0] }
+            );
+          } else if (extendedTextMessage) {
+            console.log(
+              `Received message: (${extendedTextMessage.text}) from: ${key.remoteJid}`
+            );
+          } else {
+            console.log("No valid message content found.");
           }
         }
       } catch (error) {
-        console.log("error ", error);
+        console.log("We encountered some Error:", error);
       }
     });
 
     sock.ev.on("creds.update", saveCreds);
   } catch {
-    // console.log("Error connecting to WhatsApp:", error);
     console.log("Error connecting to WhatsApp:", error);
   }
 }
@@ -199,7 +191,6 @@ async function getAllMessagesFromDB() {
       .sort({ timestamp: -1 }) // Sort in descending order based on timestamp
       .limit(20) // Limit the result to the last 20 messages
       .toArray();
-
     console.log(allMessages);
     return allMessages;
   } catch (error) {
@@ -211,11 +202,6 @@ async function getAllMessagesFromDB() {
 app.get("/get-all-messages", async (req, res) => {
   try {
     const allMessages = await getAllMessagesFromDB();
-    // Extracting only 'recipient' and 'message' fields
-    // const simplifiedMessages = allMessages.map(({ recipient, message }) => ({
-    //   recipient,
-    //   message,
-    // }));
     res.setHeader("Content-Type", "application/json");
     res.status(200).send(
       JSON.stringify(
@@ -224,15 +210,16 @@ app.get("/get-all-messages", async (req, res) => {
           response: allMessages,
         },
         null,
-        2
+        4
       )
-    ); // The third parameter (2) specifies the number of spaces for indentation
+    );
   } catch (error) {
     res.status(500).json({
       status: false,
       response: "Error retrieving messages",
     });
   }
+  //
 });
 
 const isConnected = () => {
@@ -282,19 +269,10 @@ app.get("/send-message", async (req, res) => {
   const tempMessage = req.query.message;
   const number = req.query.number;
   console.log("Message:", tempMessage, "Number:", number);
-  // const mongoClient = new MongoClient(mongoURL, {
-  //   useNewUrlParser: true,
-  //   useUnifiedTopology: true,
-  // });
   await mongoClient.connect();
   const database = process.env.Database || "whatsapp_api";
   const table = process.env.Collection || "sent_messages";
   console.log("Databse is", database, "and collection is", table);
-
-  // New connection for sent messages.
-  // const messagesCollection = mongoClient
-  //   .db("whatsapp_api")
-  //   .collection("sent_messages");
 
   // New connection for sent messages with env values.
   const messagesCollection = mongoClient.db(database).collection(table);
@@ -383,20 +361,20 @@ const updateQR = (data) => {
       const { id, name } = sock?.user;
       var userinfo = id + " " + name;
       soket?.emit("user", userinfo);
-
       break;
     case "loading":
       soket?.emit("qrstatus", "./assets/loader.gif");
       soket?.emit("log", "Loading....");
-
       break;
     default:
       break;
   }
 };
+connectToWhatsApp().catch((err) =>
+  console.log("unexpected error in connecting to whatsapp: " + err)
+); // catch any errors
 
-connectToWhatsApp().catch((err) => console.log("unexpected error: " + err)); // catch any errors
-
+// Swagger options
 const options = {
   definition: {
     openapi: "3.1.0",
