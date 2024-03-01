@@ -192,7 +192,6 @@ async function getAllMessagesFromDB() {
       .sort({ timestamp: -1 }) // Sort in descending order based on timestamp
       .limit(20) // Limit the result to the last 20 messages
       .toArray();
-    console.log(allMessages);
     return allMessages;
   } catch (error) {
     console.error("Error retrieving messages from database:", error);
