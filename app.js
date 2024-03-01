@@ -16,16 +16,12 @@ const {
   useMultiFileAuthState,
   msgRetryCounterMap,
 } = require("@whiskeysockets/baileys");
-
-// const { phoneNumberFormatter } = require("./helpers/formatter");
-
 const useMongoDBAuthState = require("./mongoAuthState");
-const mongoURL =
-  "mongodb+srv://najam1:cGxJ0o74fNAXDg4t@cluster0.sxwdi4w.mongodb.net/?retryWrites=true&w=majority";
-// const mongoURL = `mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_CLUSTER}`;
+// const mongoURL =
+// "mongodb+srv://najam1:cGxJ0o74fNAXDg4t@cluster0.sxwdi4w.mongodb.net/?retryWrites=true&w=majority";
+const mongoURL = `mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_CLUSTER}`;
 console.log("I am mongo Url", mongoURL);
 const { MongoClient } = require("mongodb");
-
 const log = (pino = require("pino"));
 const { session } = { session: "session_auth_info" };
 const { Boom } = require("@hapi/boom");
@@ -37,7 +33,16 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 (swaggerJsdoc = require("swagger-jsdoc")),
   (swaggerUi = require("swagger-ui-express"));
+const server = require("http").createServer(app);
+const io = require("socket.io")(server);
+const port = process.env.PORT || 8000;
+const qrcode = require("qrcode");
 const app = require("express")();
+
+app.use("/assets", express.static(__dirname + "/client/assets"));
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 // enable files upload
 app.use(
   fileUpload({
@@ -45,18 +50,8 @@ app.use(
   })
 );
 
-app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-const server = require("http").createServer(app);
-const io = require("socket.io")(server);
-const port = process.env.PORT || 8000;
-const qrcode = require("qrcode");
-app.use("/assets", express.static(__dirname + "/client/assets"));
-
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/index.html");
-  // res.send("server working");
 });
 
 // /**
@@ -73,6 +68,7 @@ app.get("/", (req, res) => {
 //  *       tags:
 //  *         - scan
 //  */
+
 app.get("/scan", (req, res) => {
   res.sendFile("./client/index.html", {
     root: __dirname,
@@ -85,9 +81,6 @@ let soket;
 
 async function connectToWhatsApp() {
   try {
-    // const { state, saveCreds } = await useMultiFileAuthState("session_auth_info");
-    // const { state, saveCreds } = await useMultiFileAuthState("auth_info_baileys");
-
     const mongoClient = new MongoClient(mongoURL, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
@@ -96,15 +89,10 @@ async function connectToWhatsApp() {
     const collection = mongoClient
       .db("whatsapp_api")
       .collection("auth_info_baileys");
-    // New connection for sent messages.
-    // const messagesCollection = mongoClient
-    //   .db("whatsapp_api")
-    //   .collection("sent_messages");
-
     const { state, saveCreds } = await useMongoDBAuthState(collection);
 
     sock = makeWASocket({
-      browser: Browsers.macOS("Chatterly"),
+      browser: Browsers.macOS("Chatify"),
       printQRInTerminal: true,
       auth: state,
       logger: log({ level: "silent" }),
@@ -160,7 +148,6 @@ async function connectToWhatsApp() {
             console.log(captureMessage, numberWa);
 
             const compareMessage = captureMessage.toLocaleLowerCase();
-
             if (compareMessage === "ping") {
               await sock.sendMessage(
                 numberWa,
@@ -196,8 +183,7 @@ async function connectToWhatsApp() {
   }
 }
 
-// This is
-// Corrected Function to retrieve all messages from MongoDB
+//Function to retrieve all messages from MongoDB
 async function getAllMessagesFromDB() {
   try {
     const mongoClient = new MongoClient(mongoURL, {
@@ -432,4 +418,3 @@ app.use(
 server.listen(port, () => {
   console.log("Server Run Port : " + port);
 });
-  
