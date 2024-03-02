@@ -16,12 +16,6 @@ const {
   useMultiFileAuthState,
   msgRetryCounterMap,
 } = require("@whiskeysockets/baileys");
-const useMongoDBAuthState = require("./mongoAuthState");
-// const mongoURL =
-// "mongodb+srv://najam1:cGxJ0o74fNAXDg4t@cluster0.sxwdi4w.mongodb.net/?retryWrites=true&w=majority";
-const mongoURL = `mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_CLUSTER}`;
-console.log("I am mongo Url", mongoURL);
-const { MongoClient } = require("mongodb");
 const log = (pino = require("pino"));
 const { session } = { session: "session_auth_info" };
 const { Boom } = require("@hapi/boom");
@@ -30,28 +24,32 @@ const fs = require("fs");
 const express = require("express");
 const fileUpload = require("express-fileupload");
 const cors = require("cors");
+require("dotenv").config();
+const mongoURL = `mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_CLUSTER}`;
+const useMongoDBAuthState = require("./mongoAuthState");
+const { MongoClient, ServerApiVersion } = require("mongodb");
 const bodyParser = require("body-parser");
 (swaggerJsdoc = require("swagger-jsdoc")),
   (swaggerUi = require("swagger-ui-express"));
-const server = require("http").createServer(app);
-const io = require("socket.io")(server);
-const port = process.env.PORT || 8000;
-const qrcode = require("qrcode");
 const app = require("express")();
-
-app.use("/assets", express.static(__dirname + "/client/assets"));
-app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-// enable files upload
 app.use(
   fileUpload({
     createParentPath: true,
   })
 );
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use("/assets", express.static(__dirname + "/client/assets"));
+const server = require("http").createServer(app);
+const io = require("socket.io")(server);
+const port = process.env.PORT || 7000;
+const qrcode = require("qrcode");
 
+// Home page
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/index.html");
+  // res.send("server working");
 });
 
 // /**
@@ -68,7 +66,6 @@ app.get("/", (req, res) => {
 //  *       tags:
 //  *         - scan
 //  */
-
 app.get("/scan", (req, res) => {
   res.sendFile("./client/index.html", {
     root: __dirname,
@@ -79,12 +76,18 @@ let sock;
 let qrDinamic;
 let soket;
 
+// Defining mongoClient for mongodb connection
+const mongoClient = new MongoClient(mongoURL, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  },
+});
+
 async function connectToWhatsApp() {
   try {
-    const mongoClient = new MongoClient(mongoURL, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    console.log('Initiating whtsapp connection');
     await mongoClient.connect();
     const collection = mongoClient
       .db("whatsapp_api")
@@ -98,102 +101,96 @@ async function connectToWhatsApp() {
       logger: log({ level: "silent" }),
     });
 
-    sock.ev.on("connection.update", async (update) => {
-      const { connection, lastDisconnect, qr } = update;
-      qrDinamic = qr;
-      if (connection === "close") {
-        let reason = new Boom(lastDisconnect.error).output.statusCode;
-        if (reason === DisconnectReason.badSession) {
-          console.log(
-            `Bad Session File, Please Delete ${session} and Scan Again`
-          );
-          sock.logout();
-        } else if (reason === DisconnectReason.connectionClosed) {
-          console.log("Connection closed, reconnecting...");
-          connectToWhatsApp();
-        } else if (reason === DisconnectReason.connectionLost) {
-          console.log("Server connection lost, reconnecting...");
-          connectToWhatsApp();
-        } else if (reason === DisconnectReason.connectionReplaced) {
-          console.log(
-            "Connection replaced, another new session opened, please close the current session first"
-          );
-          sock.logout();
-        } else if (reason === DisconnectReason.loggedOut) {
-          console.log(`Device closed, remove it ${session} and scan again.`);
-          sock.logout();
-        } else if (reason === DisconnectReason.restartRequired) {
-          console.log("Restart required, restarting...");
-          connectToWhatsApp();
-        } else if (reason === DisconnectReason.timedOut) {
-          console.log("Connection time expired, connecting...");
-          connectToWhatsApp();
-        } else {
-          sock.end(
-            `Unknown disconnection reason: ${reason}|${lastDisconnect.error}`
-          );
+    const connectionPromise = new Promise((resolve) => {
+      sock.ev.on("connection.update", async (update) => {
+        const { connection, lastDisconnect, qr } = update;
+        qrDinamic = qr;
+        if (connection === "close") {
+          let reason = new Boom(lastDisconnect.error).output.statusCode;
+          if (reason === DisconnectReason.badSession) {
+            console.log(
+              `Bad Session File, Please Delete ${session} and Scan Again`
+            );
+            sock.logout();
+          } else if (reason === DisconnectReason.connectionClosed) {
+            console.log("Connection closed, reconnecting...");
+            connectToWhatsApp();
+          } else if (reason === DisconnectReason.connectionLost) {
+            console.log("Server connection lost, reconnecting...");
+            connectToWhatsApp();
+          } else if (reason === DisconnectReason.connectionReplaced) {
+            console.log(
+              "Connection replaced, another new session opened, please close the current session first"
+            );
+            sock.logout();
+          } else if (reason === DisconnectReason.loggedOut) {
+            console.log(`Device closed, remove it ${session} and scan again.`);
+            sock.logout();
+          } else if (reason === DisconnectReason.restartRequired) {
+            console.log("Restart required, restarting...");
+            connectToWhatsApp();
+          } else if (reason === DisconnectReason.timedOut) {
+            console.log("Connection time expired, connecting...");
+            connectToWhatsApp();
+          } else {
+            sock.end(
+              `Unknown disconnection reason: ${reason}|${lastDisconnect.error}`
+            );
+          }
+        } else if (connection === "open") {
+          console.log("Connected ");
+          resolve();
+          return;
         }
-      } else if (connection === "open") {
-        console.log("Connected ");
-        return;
-      }
+      });
     });
 
     sock.ev.on("messages.upsert", async ({ messages, type }) => {
       try {
-        if (type === "notify") {
-          if (!messages[0]?.key.fromMe) {
-            const captureMessage = messages[0]?.message?.conversation;
-            const numberWa = messages[0]?.key?.remoteJid;
-            console.log(captureMessage, numberWa);
-
-            const compareMessage = captureMessage.toLocaleLowerCase();
-            if (compareMessage === "ping") {
-              await sock.sendMessage(
-                numberWa,
-                {
-                  text: "Pong",
-                },
-                {
-                  quoted: messages[0],
-                }
-              );
-            }
-            // else {
-            //   await sock.sendMessage(
-            //     numberWa,
-            //     {
-            //       text: "Message Received.",
-            //     },
-            //     {
-            //       quoted: messages[0],
-            //     }
-            //   );
-            // }
+        if (type === "notify" && !messages[0]?.key.fromMe) {
+          const { key, message } = messages[0];
+          const { extendedTextMessage } = message;
+          if (
+            extendedTextMessage &&
+            extendedTextMessage.text.toLowerCase() === "ping"
+          ) {
+            console.log("Received ping, sending pong.");
+            await sock.sendMessage(
+              key.remoteJid,
+              { text: "Pong" },
+              { quoted: messages[0] }
+            );
+          } else if (extendedTextMessage) {
+            console.log(
+              `Received message: (${extendedTextMessage.text}) from: ${key.remoteJid}`
+            );
+          } else {
+            console.log("No valid message content found.");
           }
         }
       } catch (error) {
-        console.log("error ", error);
+        console.log("We encountered some Error:", error);
       }
     });
 
     sock.ev.on("creds.update", saveCreds);
   } catch {
-    console.log("catching error");
+    console.log("Error connecting to WhatsApp:", error);
   }
 }
 
-//Function to retrieve all messages from MongoDB
+// Function to retrieve all messages from MongoDB
 async function getAllMessagesFromDB() {
   try {
-    const mongoClient = new MongoClient(mongoURL, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
     const allMessages = await mongoClient
       .db("whatsapp_api")
       .collection("sent_messages")
-      .find()
+      .find(
+        {},
+        { projection: { recipient: 1, message: 1, timestamp: 1, _id: 0 } }
+      )
+      .sort({ timestamp: -1 }) // Sort in descending order based on timestamp
+      .limit(20) // Limit the result to the last 20 messages
       .toArray();
     return allMessages;
   } catch (error) {
@@ -205,28 +202,24 @@ async function getAllMessagesFromDB() {
 app.get("/get-all-messages", async (req, res) => {
   try {
     const allMessages = await getAllMessagesFromDB();
-    // Extracting only 'recipient' and 'message' fields
-    const simplifiedMessages = allMessages.map(({ recipient, message }) => ({
-      recipient,
-      message,
-    }));
     res.setHeader("Content-Type", "application/json");
     res.status(200).send(
       JSON.stringify(
         {
           status: true,
-          response: simplifiedMessages,
+          response: allMessages,
         },
         null,
-        2
+        4
       )
-    ); // The third parameter (2) specifies the number of spaces for indentation
+    );
   } catch (error) {
     res.status(500).json({
       status: false,
       response: "Error retrieving messages",
     });
   }
+  //
 });
 
 const isConnected = () => {
@@ -275,20 +268,16 @@ const isConnected = () => {
 app.get("/send-message", async (req, res) => {
   const tempMessage = req.query.message;
   const number = req.query.number;
-  // const number = phoneNumberFormatter(req.query.number);
-  console.log(tempMessage, number);
-
-  const mongoClient = new MongoClient(mongoURL, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  });
+  console.log("Message:", tempMessage, "Number:", number);
   await mongoClient.connect();
-  // New connection for sent messages.
-  const messagesCollection = mongoClient
-    .db("whatsapp_api")
-    .collection("sent_messages");
+  const database = process.env.Database || "whatsapp_api";
+  const table = process.env.Collection || "sent_messages";
+  console.log("Databse is", database, "and collection is", table);
 
-  // let numberWA;
+  // New connection for sent messages with env values.
+  const messagesCollection = mongoClient.db(database).collection(table);
+
+  let numberWA;
   try {
     if (!number) {
       res.status(500).json({
@@ -300,7 +289,7 @@ app.get("/send-message", async (req, res) => {
 
       if (isConnected()) {
         const exist = await sock.onWhatsApp(numberWA);
-
+        console.log("Chacking existance of the number", exist);
         if (exist?.jid || (exist && exist[0]?.jid)) {
           sock
             .sendMessage(exist.jid || exist[0].jid, {
@@ -319,7 +308,6 @@ app.get("/send-message", async (req, res) => {
               } catch (error) {
                 console.error("Error saving message to database:", error);
               }
-
               // Send the response
               res.status(200).json({
                 status: true,
@@ -332,6 +320,11 @@ app.get("/send-message", async (req, res) => {
                 response: err,
               });
             });
+        } else {
+          res.status(500).json({
+            status: false,
+            response: "This number is not on Whatsapp.",
+          });
         }
       } else {
         res.status(500).json({
@@ -368,20 +361,20 @@ const updateQR = (data) => {
       const { id, name } = sock?.user;
       var userinfo = id + " " + name;
       soket?.emit("user", userinfo);
-
       break;
     case "loading":
       soket?.emit("qrstatus", "./assets/loader.gif");
       soket?.emit("log", "Loading....");
-
       break;
     default:
       break;
   }
 };
+connectToWhatsApp().catch((err) =>
+  console.log("unexpected error in connecting to whatsapp: " + err)
+); // catch any errors
 
-connectToWhatsApp().catch((err) => console.log("unexpected error: " + err)); // catch any errors
-
+// Swagger options
 const options = {
   definition: {
     openapi: "3.1.0",
@@ -416,5 +409,5 @@ app.use(
 );
 
 server.listen(port, () => {
-  console.log("Server Run Port : " + port);
+  console.log("Server Running on Port : " + port);
 });
