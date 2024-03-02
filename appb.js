@@ -25,13 +25,22 @@ const express = require("express");
 const fileUpload = require("express-fileupload");
 const cors = require("cors");
 require("dotenv").config();
-const mongoURL = `mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_CLUSTER}`;
 const useMongoDBAuthState = require("./mongoAuthState");
-const { MongoClient, ServerApiVersion } = require("mongodb");
 const bodyParser = require("body-parser");
 (swaggerJsdoc = require("swagger-jsdoc")),
   (swaggerUi = require("swagger-ui-express"));
 const app = require("express")();
+//
+//
+//
+const {
+  mongoClient,
+  authInfoCollection,
+  sentMessagesCollection,
+} = require("./mongodb");
+//
+//
+//
 app.use(
   fileUpload({
     createParentPath: true,
@@ -76,31 +85,13 @@ let sock;
 let qrDinamic;
 let soket;
 
-// Defining mongoClient for mongodb connection
-const mongoClient = new MongoClient(mongoURL, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  },
-});
-const database = process.env.Database || "whatsapp_api";
-const auth_info = process.env.auth_info || "auth_info_baileys";
-const sentMessages = process.env.Collection || "sent_messages";
-console.log("Databse is", database, "and collection is", sentMessages);
-// New connection for sent messages with env values.
-const messagesCollection = mongoClient.db(database).collection(sentMessages);
-
 async function connectToWhatsApp() {
   try {
     console.log("Initiating whtsapp connection");
     await mongoClient.connect();
-    const collection = mongoClient
-      // .db("whatsapp_api")
-      .db(database)
-      .collection(auth_info);
-    const { state, saveCreds } = await useMongoDBAuthState(collection);
+    const { state, saveCreds } = await useMongoDBAuthState(authInfoCollection);
 
+    // Creating whatsapp client
     sock = makeWASocket({
       browser: Browsers.macOS("Chatify"),
       printQRInTerminal: true,
@@ -188,9 +179,7 @@ async function connectToWhatsApp() {
 // Function to retrieve all messages from MongoDB
 async function getAllMessagesFromDB() {
   try {
-    const allMessages = await mongoClient
-      .db(database)
-      .collection(sentMessages)
+    const allMessages = await sentMessagesCollection
       .find(
         {},
         { projection: { recipient: 1, message: 1, timestamp: 1, _id: 0 } }
@@ -298,7 +287,7 @@ app.get("/send-message", async (req, res) => {
             .then(async (result) => {
               // Save sent message to the database
               try {
-                await messagesCollection.insertOne({
+                await sentMessagesCollection.insertOne({
                   sender: sock.user.id,
                   recipient: numberWA,
                   message: tempMessage,
