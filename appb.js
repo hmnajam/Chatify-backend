@@ -84,14 +84,21 @@ const mongoClient = new MongoClient(mongoURL, {
     deprecationErrors: true,
   },
 });
+const database = process.env.Database || "whatsapp_api";
+const auth_info = process.env.auth_info || "auth_info_baileys";
+const sentMessages = process.env.Collection || "sent_messages";
+console.log("Databse is", database, "and collection is", sentMessages);
+// New connection for sent messages with env values.
+const messagesCollection = mongoClient.db(database).collection(sentMessages);
 
 async function connectToWhatsApp() {
   try {
-    console.log('Initiating whtsapp connection');
+    console.log("Initiating whtsapp connection");
     await mongoClient.connect();
     const collection = mongoClient
-      .db("whatsapp_api")
-      .collection("auth_info_baileys");
+      // .db("whatsapp_api")
+      .db(database)
+      .collection(auth_info);
     const { state, saveCreds } = await useMongoDBAuthState(collection);
 
     sock = makeWASocket({
@@ -172,7 +179,6 @@ async function connectToWhatsApp() {
         console.log("We encountered some Error:", error);
       }
     });
-
     sock.ev.on("creds.update", saveCreds);
   } catch {
     console.log("Error connecting to WhatsApp:", error);
@@ -183,8 +189,8 @@ async function connectToWhatsApp() {
 async function getAllMessagesFromDB() {
   try {
     const allMessages = await mongoClient
-      .db("whatsapp_api")
-      .collection("sent_messages")
+      .db(database)
+      .collection(sentMessages)
       .find(
         {},
         { projection: { recipient: 1, message: 1, timestamp: 1, _id: 0 } }
@@ -265,18 +271,12 @@ const isConnected = () => {
  *       tags:
  *         - sendMessage
  */
+
 app.get("/send-message", async (req, res) => {
   const tempMessage = req.query.message;
   const number = req.query.number;
   console.log("Message:", tempMessage, "Number:", number);
   await mongoClient.connect();
-  const database = process.env.Database || "whatsapp_api";
-  const table = process.env.Collection || "sent_messages";
-  console.log("Databse is", database, "and collection is", table);
-
-  // New connection for sent messages with env values.
-  const messagesCollection = mongoClient.db(database).collection(table);
-
   let numberWA;
   try {
     if (!number) {
