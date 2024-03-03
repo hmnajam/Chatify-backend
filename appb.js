@@ -30,17 +30,13 @@ const bodyParser = require("body-parser");
 (swaggerJsdoc = require("swagger-jsdoc")),
   (swaggerUi = require("swagger-ui-express"));
 const app = require("express")();
-//
-//
-//
+
 const {
   mongoClient,
   authInfoCollection,
   sentMessagesCollection,
 } = require("./mongodb");
-//
-//
-//
+
 app.use(
   fileUpload({
     createParentPath: true,
@@ -99,48 +95,45 @@ async function connectToWhatsApp() {
       logger: log({ level: "silent" }),
     });
 
-    const connectionPromise = new Promise((resolve) => {
-      sock.ev.on("connection.update", async (update) => {
-        const { connection, lastDisconnect, qr } = update;
-        qrDinamic = qr;
-        if (connection === "close") {
-          let reason = new Boom(lastDisconnect.error).output.statusCode;
-          if (reason === DisconnectReason.badSession) {
-            console.log(
-              `Bad Session File, Please Delete ${session} and Scan Again`
-            );
-            sock.logout();
-          } else if (reason === DisconnectReason.connectionClosed) {
-            console.log("Connection closed, reconnecting...");
-            connectToWhatsApp();
-          } else if (reason === DisconnectReason.connectionLost) {
-            console.log("Server connection lost, reconnecting...");
-            connectToWhatsApp();
-          } else if (reason === DisconnectReason.connectionReplaced) {
-            console.log(
-              "Connection replaced, another new session opened, please close the current session first"
-            );
-            sock.logout();
-          } else if (reason === DisconnectReason.loggedOut) {
-            console.log(`Device closed, remove it ${session} and scan again.`);
-            sock.logout();
-          } else if (reason === DisconnectReason.restartRequired) {
-            console.log("Restart required, restarting...");
-            connectToWhatsApp();
-          } else if (reason === DisconnectReason.timedOut) {
-            console.log("Connection time expired, connecting...");
-            connectToWhatsApp();
-          } else {
-            sock.end(
-              `Unknown disconnection reason: ${reason}|${lastDisconnect.error}`
-            );
-          }
-        } else if (connection === "open") {
-          console.log("Connected ");
-          resolve();
-          return;
+    sock.ev.on("connection.update", async (update) => {
+      const { connection, lastDisconnect, qr } = update;
+      qrDinamic = qr;
+      if (connection === "close") {
+        let reason = new Boom(lastDisconnect.error).output.statusCode;
+        if (reason === DisconnectReason.badSession) {
+          console.log(
+            `Bad Session File, Please Delete ${session} and Scan Again`
+          );
+          sock.logout();
+        } else if (reason === DisconnectReason.connectionClosed) {
+          console.log("Connection closed, reconnecting...");
+          connectToWhatsApp();
+        } else if (reason === DisconnectReason.connectionLost) {
+          console.log("Server connection lost, reconnecting...");
+          connectToWhatsApp();
+        } else if (reason === DisconnectReason.connectionReplaced) {
+          console.log(
+            "Connection replaced, another new session opened, please close the current session first"
+          );
+          sock.logout();
+        } else if (reason === DisconnectReason.loggedOut) {
+          console.log(`Device closed, remove it ${session} and scan again.`);
+          sock.logout();
+        } else if (reason === DisconnectReason.restartRequired) {
+          console.log("Restart required, restarting...");
+          connectToWhatsApp();
+        } else if (reason === DisconnectReason.timedOut) {
+          console.log("Connection time expired, connecting...");
+          connectToWhatsApp();
+        } else {
+          sock.end(
+            `Unknown disconnection reason: ${reason}|${lastDisconnect.error}`
+          );
         }
-      });
+      } else if (connection === "open") {
+        console.log("Connected ");
+        return;
+      }
     });
 
     sock.ev.on("messages.upsert", async ({ messages, type }) => {
@@ -303,9 +296,7 @@ async function getAllMessagesFromDB() {
     throw error;
   }
 }
-//
-//
-//
+
 app.get("/get-all-messages", async (req, res) => {
   try {
     const allMessages = await getAllMessagesFromDB();
@@ -328,7 +319,6 @@ app.get("/get-all-messages", async (req, res) => {
   }
 });
 
-//
 io.on("connection", async (socket) => {
   soket = socket;
   if (isConnected()) {
