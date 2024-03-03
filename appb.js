@@ -50,40 +50,21 @@ const server = require("http").createServer(app);
 const io = require("socket.io")(server);
 const port = process.env.PORT || 7000;
 const qrcode = require("qrcode");
-
-// Home page
-// app.get("/", (req, res) => {
-//   res.sendFile(__dirname + "/index.html");
-//   // res.send("server working");
-// });
+//
+//
+//
 const home = require("./routes/home");
 app.use("/", home);
 
+const scan = require("./routes/scan");
+app.use("/", scan);
+
 const allMessages = require("./routes/allMessages");
 app.use("/", allMessages);
-//
-//
-//
 
-// /**
-//  * @swagger
-//  * paths:
-//  *   /scan:
-//  *     get:
-//  *       summary: Serve index.html for scanning
-//  *       responses:
-//  *         '200':
-//  *           description: User logged in successfully
-//  *       x-swagger-router-controller: scan
-//  *       operationId: index
-//  *       tags:
-//  *         - scan
-//  */
-app.get("/scan", (req, res) => {
-  res.sendFile("./client/index.html", {
-    root: __dirname,
-  });
-});
+//
+//
+//
 
 let sock;
 let qrDinamic;
