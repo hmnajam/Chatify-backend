@@ -52,10 +52,12 @@ const port = process.env.PORT || 7000;
 const qrcode = require("qrcode");
 
 // Home page
-app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/index.html");
-  // res.send("server working");
-});
+// app.get("/", (req, res) => {
+//   res.sendFile(__dirname + "/index.html");
+//   // res.send("server working");
+// });
+const home = require ('./routes/home')
+app.use('/', home)
 
 // /**
 //  * @swagger
