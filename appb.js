@@ -59,6 +59,9 @@ app.use("/", home);
 const scan = require("./routes/scan");
 app.use("/", scan);
 
+// const sendMessage = require("./routes/sendMessage");
+// app.use("/", sendMessage);
+
 const allMessages = require("./routes/allMessages");
 app.use("/", allMessages);
 
@@ -162,45 +165,45 @@ const isConnected = () => {
   return sock?.user ? true : false;
 };
 
-/**
- * @swagger
- * paths:
- *   /send-message:
- *     get:
- *       summary: Send a WhatsApp message
- *       parameters:
- *         - name: message
- *           in: query
- *           description: The message to be sent
- *           required: true
- *           schema:
- *             type: string
- *         - name: number
- *           in: query
- *           description: The recipient's phone number
- *           required: true
- *           schema:
- *             type: string
- *       responses:
- *         '200':
- *           description: Successful response
- *           content:
- *             application/json:
- *               example:
- *                 status: true
- *                 response: Success message
- *         '500':
- *           description: Error response
- *           content:
- *             application/json:
- *               example:
- *                 status: false
- *                 response: Error message
- *       x-swagger-router-controller: sendMessage
- *       operationId: index
- *       tags:
- *         - sendMessage
- */
+// /**
+//  * @swagger
+//  * paths:
+//  *   /send-message:
+//  *     get:
+//  *       summary: Send a WhatsApp message
+//  *       parameters:
+//  *         - name: message
+//  *           in: query
+//  *           description: The message to be sent
+//  *           required: true
+//  *           schema:
+//  *             type: string
+//  *         - name: number
+//  *           in: query
+//  *           description: The recipient's phone number
+//  *           required: true
+//  *           schema:
+//  *             type: string
+//  *       responses:
+//  *         '200':
+//  *           description: Successful response
+//  *           content:
+//  *             application/json:
+//  *               example:
+//  *                 status: true
+//  *                 response: Success message
+//  *         '500':
+//  *           description: Error response
+//  *           content:
+//  *             application/json:
+//  *               example:
+//  *                 status: false
+//  *                 response: Error message
+//  *       x-swagger-router-controller: sendMessage
+//  *       operationId: index
+//  *       tags:
+//  *         - sendMessage
+//  */
 
 app.get("/send-message", async (req, res) => {
   const tempMessage = req.query.message;
