@@ -27,8 +27,7 @@ const cors = require("cors");
 require("dotenv").config();
 const useMongoDBAuthState = require("./mongoAuthState");
 const bodyParser = require("body-parser");
-(swaggerJsdoc = require("swagger-jsdoc")),
-  (swaggerUi = require("swagger-ui-express"));
+
 const app = require("express")();
 
 const {
@@ -64,6 +63,14 @@ app.use("/", scan);
 
 const allMessages = require("./routes/allMessages");
 app.use("/", allMessages);
+
+const { swaggerUi, swaggerSpecs } = require("./config/swaggerConfig");
+
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpecs, { explorer: true })
+);
 
 //
 //
@@ -306,40 +313,6 @@ const updateQR = (data) => {
 connectToWhatsApp().catch((err) =>
   console.log("unexpected error in connecting to whatsapp: " + err)
 ); // catch any errors
-
-// Swagger options
-const options = {
-  definition: {
-    openapi: "3.1.0",
-    info: {
-      title: "Chatterly APIs with Swagger",
-      version: "0.1.0",
-      description: "Official swagger documentation of Chatterly APIs.",
-      license: {
-        name: "MIT",
-        url: "https://spdx.org/licenses/MIT.html",
-      },
-      contact: {
-        name: "Najam Saeed",
-        url: "https://najam.pk/",
-        email: "hmnajam@gmail.com",
-      },
-    },
-    servers: [
-      {
-        url: "http://localhost:8000",
-      },
-    ],
-  },
-  apis: ["./appb.js"],
-};
-
-const specs = swaggerJsdoc(options);
-app.use(
-  "/api-docs",
-  swaggerUi.serve,
-  swaggerUi.setup(specs, { explorer: true })
-);
 
 server.listen(port, () => {
   console.log("Server Running on Port : " + port);
