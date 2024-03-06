@@ -29,7 +29,12 @@ app.use("/", home);
 app.use("/", scan);
 app.use("/", sendMessageRouter);
 app.use("/", allMessages);
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpecs, { explorer: true })
+);
+
 server.listen(port, () => {
   console.log("Server Running on Port : " + port);
 });
