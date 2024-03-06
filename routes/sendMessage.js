@@ -1,53 +1,71 @@
+// const { Boom } = require("@hapi/boom");
+const path = require("path");
+const fs = require("fs");
+
+// sendMessage.js
 const express = require("express");
 const router = express.Router();
-const path = require("path");
-
+const qrcode = require("qrcode");
+const {
+  makeWASocket,
+  Browsers,
+  DisconnectReason,
+  Boom,
+} = require("@whiskeysockets/baileys");
+const log = require("pino");
+const { session } = { session: "session_auth_info" };
 const {
   mongoClient,
   authInfoCollection,
   sentMessagesCollection,
 } = require("../mongodb");
+const useMongoDBAuthState = require("../mongoAuthState");
 
-/**
- * @swagger
- * paths:
- *   /send-message:
- *     get:
- *       summary: Send a WhatsApp message
- *       parameters:
- *         - name: message
- *           in: query
- *           description: The message to be sent
- *           required: true
- *           schema:
- *             type: string
- *         - name: number
- *           in: query
- *           description: The recipient's phone number
- *           required: true
- *           schema:
- *             type: string
- *       responses:
- *         '200':
- *           description: Successful response
- *           content:
- *             application/json:
- *               example:
- *                 status: true
- *                 response: Success message
- *         '500':
- *           description: Error response
- *           content:
- *             application/json:
- *               example:
- *                 status: false
- *                 response: Error message
- *       x-swagger-router-controller: sendMessage
- *       operationId: index
- *       tags:
- *         - sendMessage
- */
+//
 
+let sock;
+let qrDinamic;
+let soket;
+
+// Connect to WhatsApp function
+async function connectToWhatsApp() {
+  try {
+    console.log("Initiating WhatsApp connection");
+    await mongoClient.connect();
+    const { state, saveCreds } = await useMongoDBAuthState(authInfoCollection);
+
+    // Creating WhatsApp client
+    sock = makeWASocket({
+      browser: Browsers.macOS("Chatify"),
+      printQRInTerminal: true,
+      auth: state,
+      logger: log({ level: "silent" }),
+    });
+
+    // Event listeners for connection updates and messages
+    // ... (your existing event listeners)
+
+    sock.ev.on("creds.update", saveCreds);
+  } catch (error) {
+    console.log("Error connecting to WhatsApp:", error);
+  }
+}
+
+// Check if connected to WhatsApp
+const isConnected = () => {
+  return sock?.user ? true : false;
+};
+
+// Update QR code function
+const updateQR = (data) => {
+  switch (
+    data
+    // ... (your existing cases for "qr", "connected", "loading")
+  ) {
+  }
+};
+
+// Route to send a WhatsApp message
 router.get("/send-message", async (req, res) => {
   const tempMessage = req.query.message;
   const number = req.query.number;
@@ -65,7 +83,7 @@ router.get("/send-message", async (req, res) => {
 
       if (isConnected()) {
         const exist = await sock.onWhatsApp(numberWA);
-        console.log("Chacking existance of the number", exist);
+        console.log("Checking existence of the number", exist);
         if (exist?.jid || (exist && exist[0]?.jid)) {
           sock
             .sendMessage(exist.jid || exist[0].jid, {
@@ -99,7 +117,7 @@ router.get("/send-message", async (req, res) => {
         } else {
           res.status(500).json({
             status: false,
-            response: "This number is not on Whatsapp.",
+            response: "This number is not on WhatsApp.",
           });
         }
       } else {
@@ -114,4 +132,15 @@ router.get("/send-message", async (req, res) => {
   }
 });
 
-module.exports = router;
+// Socket connection event
+const handleSocketConnection = async (socket) => {
+  soket = socket;
+  if (isConnected()) {
+    updateQR("connected");
+  } else if (qrDinamic) {
+    updateQR("qr");
+  }
+};
+
+// Export the router and socket connection event
+module.exports = { router, handleSocketConnection, connectToWhatsApp };
