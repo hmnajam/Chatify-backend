@@ -1,4 +1,8 @@
 // const { Boom } = require("@hapi/boom");
+// const fileUpload = require("express-fileupload");
+// const cors = require("cors");
+// app.use(fileUpload({ createParentPath: true }));
+// app.use(cors());
 const path = require("path");
 const fs = require("fs");
 
@@ -58,10 +62,39 @@ const isConnected = () => {
 
 // Update QR code function
 const updateQR = (data) => {
-  switch (
-    data
-    // ... (your existing cases for "qr", "connected", "loading")
-  ) {
+  switch (data) {
+    case "qr":
+      qrcode.toDataURL(qrDinamic, (err, url) => {
+        soket?.emit("qr", url);
+        soket?.emit("log", "QR code received, scan");
+      });
+      break;
+    case "connected":
+      const filePath =
+        "D:/Projects/Chatify/chatify-backend/client/assets/check.svg";
+      console.log("Resolved path:", path.resolve(filePath));
+
+      fs.readFile(filePath, (err, data) => {
+        if (err) {
+          console.error(`Error reading file: ${err}`);
+          soket?.emit("log", `Error reading file: ${err}`);
+        } else {
+          const base64Image = Buffer.from(data).toString("base64");
+          soket?.emit("qrstatus", `data:image/svg+xml;base64,${base64Image}`);
+          soket?.emit("log", "File sent successfully");
+        }
+      });
+      soket?.emit("log", " User connected");
+      const { id, name } = sock?.user;
+      var userinfo = id + " " + name;
+      soket?.emit("user", userinfo);
+      break;
+    case "loading":
+      soket?.emit("qrstatus", "../client/assets/loader.gif");
+      soket?.emit("log", "Loading....");
+      break;
+    default:
+      break;
   }
 };
 
