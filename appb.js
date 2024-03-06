@@ -12,14 +12,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // Routes
 const routes = require("./routes"); // Import simplified routes
-const {
-  home,
-  scan,
-  allMessages,
-  // sendMessageRouter,
-  swaggerUi,
-  swaggerSpecs,
-} = routes;
+const { home, scan, allMessages, swaggerUi, swaggerSpecs } = routes;
 const {
   router: sendMessageRouter,
   handleSocketConnection,
@@ -36,12 +29,7 @@ app.use("/", home);
 app.use("/", scan);
 app.use("/", sendMessageRouter);
 app.use("/", allMessages);
-app.use(
-  "/api-docs",
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerSpecs, { explorer: true })
-);
-
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 server.listen(port, () => {
   console.log("Server Running on Port : " + port);
 });
