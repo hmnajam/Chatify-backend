@@ -71,7 +71,7 @@ const updateQR = (data) => {
       break;
     case "connected":
       const indexPath = path.join(__dirname, "../client/assets/check.svg");
-      console.log("indexPath path:", path.resolve(indexPath));
+      // console.log("indexPath path:", path.resolve(indexPath));
       fs.readFile(indexPath, (err, data) => {
         if (err) {
           console.error(`Error reading file: ${err}`);

@@ -20,9 +20,15 @@ const {
 } = require("./routes/sendMessage");
 
 io.on("connection", handleSocketConnection);
-connectToWhatsApp().catch((err) =>
-  console.log("Unexpected error in connecting to WhatsApp: " + err)
-);
+
+// WhatsApp Connection Success
+connectToWhatsApp()
+  .then(() => {
+    console.log("Connected to WhatsApp successfully");
+  })
+  .catch((err) => {
+    console.error("Error connecting to WhatsApp:", err);
+  });
 
 // Using simplified routes
 app.use("/", home);
