@@ -71,11 +71,7 @@ const updateQR = (data) => {
       break;
     case "connected":
       const indexPath = path.join(__dirname, "../client/assets/check.svg");
-      const filePath =
-        "D:/Projects/Chatify/chatify-backend/client/assets/check.svg";
       console.log("indexPath path:", path.resolve(indexPath));
-      console.log("filePath path:", path.resolve(filePath));
-
       fs.readFile(indexPath, (err, data) => {
         if (err) {
           console.error(`Error reading file: ${err}`);
