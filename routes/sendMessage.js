@@ -70,13 +70,13 @@ const updateQR = (data) => {
       });
       break;
     case "connected":
-      const indexPath = path.join(__dirname, "./assets/check.svg");
-
+      const indexPath = path.join(__dirname, "../client/assets/check.svg");
       const filePath =
         "D:/Projects/Chatify/chatify-backend/client/assets/check.svg";
-      console.log("Resolved path:", path.resolve(indexPath));
+      console.log("indexPath path:", path.resolve(indexPath));
+      console.log("filePath path:", path.resolve(filePath));
 
-      fs.readFile(filePath, (err, data) => {
+      fs.readFile(indexPath, (err, data) => {
         if (err) {
           console.error(`Error reading file: ${err}`);
           soket?.emit("log", `Error reading file: ${err}`);
