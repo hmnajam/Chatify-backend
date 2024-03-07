@@ -9,7 +9,7 @@ const port = process.env.PORT || 7000;
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-console.log('Middleware crossed.');
+console.log("Middleware crossed.");
 // Routes
 const routes = require("./routes"); // Import simplified routes
 const { home, scan, allMessages, swaggerUi, swaggerSpecs } = routes;
@@ -18,8 +18,6 @@ const {
   handleSocketConnection,
   connectToWhatsApp,
 } = require("./routes/sendMessage");
-console.log('sendMessage crossed.');
-
 io.on("connection", handleSocketConnection);
 
 // WhatsApp Connection Success
