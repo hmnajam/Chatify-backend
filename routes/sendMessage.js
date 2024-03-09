@@ -1,12 +1,5 @@
-// const { Boom } = require("@hapi/boom");
-// const fileUpload = require("express-fileupload");
-// const cors = require("cors");
-// app.use(fileUpload({ createParentPath: true }));
-// app.use(cors());
 const path = require("path");
 const fs = require("fs");
-
-// sendMessage.js
 const express = require("express");
 const router = express.Router();
 const qrcode = require("qrcode");
@@ -24,8 +17,6 @@ const {
   sentMessagesCollection,
 } = require("../mongodb");
 const useMongoDBAuthState = require("../mongoAuthState");
-
-//
 
 let sock;
 let qrDinamic;
