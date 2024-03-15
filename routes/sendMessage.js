@@ -87,7 +87,7 @@ router.get('/send-message', async (req, res) => {
   const tempMessage = req.query.message;
   const number = req.query.number;
   console.log('Message:', tempMessage, 'Number:', number);
-  await mongoClient.connect();
+  // await mongoClient.connect();
   let numberWA;
   try {
     if (!number) {
