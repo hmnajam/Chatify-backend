@@ -11,7 +11,7 @@
   "license": "MIT",
   "private": false,
   "scripts": {
-    "start": "node app.js"
+    "start": "nodemon appb.js"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.5.0",

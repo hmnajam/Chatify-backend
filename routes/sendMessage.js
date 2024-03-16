@@ -12,14 +12,12 @@ const useMongoDBAuthState = require('../mongoAuthState');
 let sock;
 let qrDinamic;
 let soket;
-console.log('1');
 // Connect to WhatsApp function
 async function connectToWhatsApp() {
   try {
     console.log('Initiating WhatsApp connection');
     await mongoClient.connect();
     const { state, saveCreds } = await useMongoDBAuthState(authInfoCollection);
-    console.log('2');
 
     // Creating WhatsApp client
     sock = makeWASocket({
@@ -29,12 +27,10 @@ async function connectToWhatsApp() {
       logger: log({ level: 'silent' })
     });
 
-    console.log('3'),
       // Event listeners for connection updates and messages
       // ... (your existing event listeners)
 
       sock.ev.on('creds.update', saveCreds);
-    console.log('4');
   } catch (error) {
     console.log('Error connecting to WhatsApp:', error);
   }
@@ -42,7 +38,6 @@ async function connectToWhatsApp() {
 
 // Check if connected to WhatsApp
 const isConnected = () => {
-  console.log('5');
   return sock?.user ? true : false;
 };
 
