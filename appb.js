@@ -13,8 +13,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // // Importing Routes
 const routes = require('./routes');
 const { home, scan, allMessages, swaggerUi, swaggerSpecs } = routes;
-const { router: sendMessageRouter, handleSocketConnection, connectToWhatsApp } = require('./routes/sendMessage');
-io.on('connection', handleSocketConnection);
+const { router: sendMessageRouter, connectToWhatsApp } = require('./routes/sendMessage');
+// io.on('connection', handleSocketConnection);
 
 // WhatsApp Connection Success
 connectToWhatsApp()
