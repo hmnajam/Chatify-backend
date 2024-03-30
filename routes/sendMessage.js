@@ -125,7 +125,7 @@ async function connectToWhatsApp() {
     });
 
     sock.ev.on('creds.update', saveCreds);
-  } catch {
+  } catch (error) {
     console.log('Error connecting to WhatsApp:', error);
   }
 }
