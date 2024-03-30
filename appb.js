@@ -5,10 +5,12 @@ const socketIO = require('socket.io');
 const io = socketIO(server); // Initialize socket.io with the server
 require('dotenv').config();
 const port = process.env.PORT || 7000;
+const cors = require("cors");
 
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cors());
 
 // // Importing Routes
 const routes = require('./routes');
