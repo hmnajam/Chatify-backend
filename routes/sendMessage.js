@@ -239,7 +239,6 @@ const updateQR = (data) => {
       break;
   }
 };
-// connectToWhatsApp().catch((err) => console.log('unexpected error in connecting to whatsapp: ' + err)); // catch any errors
 
 // Export the router and socket connection event
 module.exports = { router, connectToWhatsApp };
