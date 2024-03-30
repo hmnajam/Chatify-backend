@@ -22,7 +22,7 @@ const { Boom } = require("@hapi/boom");
 const path = require("path");
 const fs = require("fs");
 const express = require("express");
-// const fileUpload = require("express-fileupload");
+const fileUpload = require("express-fileupload");
 const cors = require("cors");
 require("dotenv").config();
 const mongoURL = `mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_CLUSTER}`;
@@ -32,11 +32,11 @@ const bodyParser = require("body-parser");
 (swaggerJsdoc = require("swagger-jsdoc")),
   (swaggerUi = require("swagger-ui-express"));
 const app = require("express")();
-// app.use(
-//   fileUpload({
-//     createParentPath: true,
-//   })
-// );
+app.use(
+  fileUpload({
+    createParentPath: true,
+  })
+);
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -91,7 +91,7 @@ async function connectToWhatsApp() {
     await mongoClient.connect();
     const collection = mongoClient
       .db("whatsapp_api")
-      .collection("auth_info_drlab");
+      .collection("auth_info_baileys");
     const { state, saveCreds } = await useMongoDBAuthState(collection);
 
     sock = makeWASocket({
@@ -184,7 +184,7 @@ async function getAllMessagesFromDB() {
   try {
     const allMessages = await mongoClient
       .db("whatsapp_api")
-      .collection("sent_messages_drlab")
+      .collection("sent_messages")
       .find(
         {},
         { projection: { recipient: 1, message: 1, timestamp: 1, _id: 0 } }
