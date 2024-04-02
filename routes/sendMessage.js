@@ -27,10 +27,10 @@ async function connectToWhatsApp() {
       logger: log({ level: 'silent' })
     });
 
-      // Event listeners for connection updates and messages
-      // ... (your existing event listeners)
+    // Event listeners for connection updates and messages
+    // ... (your existing event listeners)
 
-      sock.ev.on('creds.update', saveCreds);
+    sock.ev.on('creds.update', saveCreds);
   } catch (error) {
     console.log('Error connecting to WhatsApp:', error);
   }
@@ -51,25 +51,14 @@ const updateQR = (data) => {
       });
       break;
     case 'connected':
-      const indexPath = path.join(__dirname, '../client/assets/check.svg');
-      // console.log("indexPath path:", path.resolve(indexPath));
-      fs.readFile(indexPath, (err, data) => {
-        if (err) {
-          console.error(`Error reading file: ${err}`);
-          soket?.emit('log', `Error reading file: ${err}`);
-        } else {
-          const base64Image = Buffer.from(data).toString('base64');
-          soket?.emit('qrstatus', `data:image/svg+xml;base64,${base64Image}`);
-          soket?.emit('log', 'File sent successfully');
-        }
-      });
+      soket?.emit('qrstatus', './assets/check.svg');
       soket?.emit('log', ' User connected');
       const { id, name } = sock?.user;
       var userinfo = id + ' ' + name;
       soket?.emit('user', userinfo);
       break;
     case 'loading':
-      soket?.emit('qrstatus', '../client/assets/loader.gif');
+      soket?.emit('qrstatus', './assets/loader.gif');
       soket?.emit('log', 'Loading....');
       break;
     default:
