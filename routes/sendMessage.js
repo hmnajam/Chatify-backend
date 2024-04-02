@@ -1,6 +1,3 @@
-const path = require('path');
-const fs = require('fs');
-
 const express = require('express');
 const router = express.Router();
 const qrcode = require('qrcode');
@@ -27,10 +24,13 @@ const { session } = { session: 'session_auth_info' };
 const { mongoClient, authInfoCollection, sentMessagesCollection } = require('../mongodb');
 const useMongoDBAuthState = require('../mongoAuthState');
 const { Boom } = require('@hapi/boom');
-
 const app = require('express')();
 const server = require('http').createServer(app);
-const io = require('socket.io')(server);
+
+const bodyParser = require('body-parser');
+
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/assets', express.static(__dirname + '../client/assets'));
 
 let sock;
@@ -91,13 +91,13 @@ async function connectToWhatsApp() {
         if (type === 'notify' && !messages[0]?.key.fromMe) {
           const { key, message } = messages[0];
           const { extendedTextMessage } = message;
-          if (extendedTextMessage && extendedTextMessage.text.toLowerCase() === 'ping') {
+          if (messages[0].message.conversation.toLowerCase() === 'ping') {
             console.log('Received ping, sending pong.');
             await sock.sendMessage(key.remoteJid, { text: 'Pong' }, { quoted: messages[0] });
           } else if (extendedTextMessage) {
             console.log(`Received message: (${extendedTextMessage.text}) from: ${key.remoteJid}`);
           } else {
-            console.log('No valid message content found.');
+            console.log('No valid message content found.', messages[0].message.conversation);
           }
         }
       } catch (error) {
