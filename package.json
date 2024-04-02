@@ -11,7 +11,8 @@
   "license": "MIT",
   "private": false,
   "scripts": {
-    "start": "nodemon app.js"
+    "start": "nodemon app.js",
+    "test": "jest"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.5.0",
@@ -41,5 +42,9 @@
       "auth_info_baileys/",
       "session_auth_info/"
     ]
+  },
+  "devDependencies": {
+    "axios": "^1.6.8",
+    "jest": "^29.7.0"
   }
 }
