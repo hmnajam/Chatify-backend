@@ -1,13 +1,37 @@
 const path = require('path');
 const fs = require('fs');
+
 const express = require('express');
 const router = express.Router();
 const qrcode = require('qrcode');
-const { makeWASocket, Browsers, DisconnectReason, Boom } = require('@whiskeysockets/baileys');
+const {
+  default: makeWASocket,
+  Browsers,
+  MessageType,
+  MessageOptions,
+  Mimetype,
+  DisconnectReason,
+  BufferJSON,
+  AnyMessageContent,
+  delay,
+  fetchLatestBaileysVersion,
+  isJidBroadcast,
+  makeCacheableSignalKeyStore,
+  makeInMemoryStore,
+  MessageRetryMap,
+  useMultiFileAuthState,
+  msgRetryCounterMap
+} = require('@whiskeysockets/baileys');
 const log = require('pino');
 const { session } = { session: 'session_auth_info' };
 const { mongoClient, authInfoCollection, sentMessagesCollection } = require('../mongodb');
 const useMongoDBAuthState = require('../mongoAuthState');
+const { Boom } = require('@hapi/boom');
+
+const app = require('express')();
+const server = require('http').createServer(app);
+const io = require('socket.io')(server);
+app.use('/assets', express.static(__dirname + '../client/assets'));
 
 let sock;
 let qrDinamic;
@@ -27,8 +51,59 @@ async function connectToWhatsApp() {
       logger: log({ level: 'silent' })
     });
 
-    // Event listeners for connection updates and messages
-    // ... (your existing event listeners)
+    sock.ev.on('connection.update', async (update) => {
+      const { connection, lastDisconnect, qr } = update;
+      qrDinamic = qr;
+      if (connection === 'close') {
+        let reason = new Boom(lastDisconnect.error).output.statusCode;
+        if (reason === DisconnectReason.badSession) {
+          console.log(`Bad Session File, Please Delete ${session} and Scan Again`);
+          sock.logout();
+        } else if (reason === DisconnectReason.connectionClosed) {
+          console.log('Connection closed, reconnecting...');
+          connectToWhatsApp();
+        } else if (reason === DisconnectReason.connectionLost) {
+          console.log('Server connection lost, reconnecting...');
+          connectToWhatsApp();
+        } else if (reason === DisconnectReason.connectionReplaced) {
+          console.log('Connection replaced, another new session opened, please close the current session first');
+          sock.logout();
+        } else if (reason === DisconnectReason.loggedOut) {
+          console.log(`Device closed, remove it ${session} and scan again.`);
+          sock.logout();
+        } else if (reason === DisconnectReason.restartRequired) {
+          console.log('Restart required, restarting...');
+          connectToWhatsApp();
+        } else if (reason === DisconnectReason.timedOut) {
+          console.log('Connection time expired, connecting...');
+          connectToWhatsApp();
+        } else {
+          sock.end(`Unknown disconnection reason: ${reason}|${lastDisconnect.error}`);
+        }
+      } else if (connection === 'open') {
+        console.log('Connected ');
+        return;
+      }
+    });
+
+    sock.ev.on('messages.upsert', async ({ messages, type }) => {
+      try {
+        if (type === 'notify' && !messages[0]?.key.fromMe) {
+          const { key, message } = messages[0];
+          const { extendedTextMessage } = message;
+          if (extendedTextMessage && extendedTextMessage.text.toLowerCase() === 'ping') {
+            console.log('Received ping, sending pong.');
+            await sock.sendMessage(key.remoteJid, { text: 'Pong' }, { quoted: messages[0] });
+          } else if (extendedTextMessage) {
+            console.log(`Received message: (${extendedTextMessage.text}) from: ${key.remoteJid}`);
+          } else {
+            console.log('No valid message content found.');
+          }
+        }
+      } catch (error) {
+        console.log('We encountered some Error:', error);
+      }
+    });
 
     sock.ev.on('creds.update', saveCreds);
   } catch (error) {
@@ -48,6 +123,7 @@ const updateQR = (data) => {
       qrcode.toDataURL(qrDinamic, (err, url) => {
         soket?.emit('qr', url);
         soket?.emit('log', 'QR code received, scan');
+        console.log('sending qr code');
       });
       break;
     case 'connected':
@@ -71,7 +147,6 @@ router.get('/send-message', async (req, res) => {
   const tempMessage = req.query.message;
   const number = req.query.number;
   console.log('Message:', tempMessage, 'Number:', number);
-  // await mongoClient.connect();
   let numberWA;
   try {
     if (!number) {
@@ -138,10 +213,21 @@ const handleSocketConnection = async (socket) => {
   soket = socket;
   if (isConnected()) {
     updateQR('connected');
+    console.log('in handle socket');
   } else if (qrDinamic) {
     updateQR('qr');
+    console.log('in handle socket');
   }
 };
+
+// io.on('connection', async (socket) => {
+//   soket = socket;
+//   if (isConnected()) {
+//     updateQR('connected');
+//   } else if (qrDinamic) {
+//     updateQR('qr');
+//   }
+// });
 
 // Export the router and socket connection event
 module.exports = { router, handleSocketConnection, connectToWhatsApp };

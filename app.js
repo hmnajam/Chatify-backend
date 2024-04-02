@@ -1,12 +1,13 @@
 const bodyParser = require('body-parser');
 const app = require('express')();
 const server = require('http').createServer(app);
-const socketIO = require('socket.io');
-const io = socketIO(server); // Initialize socket.io with the server
+const io = require('socket.io')(server);
 require('dotenv').config();
 const port = process.env.PORT || 7000;
-const cors = require("cors");
+const cors = require('cors');
+const express = require('express');
 
+app.use('/assets', express.static(__dirname + '/client/assets'));
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
