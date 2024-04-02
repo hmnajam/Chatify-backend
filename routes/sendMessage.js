@@ -26,9 +26,7 @@ const useMongoDBAuthState = require('../mongoAuthState');
 const { Boom } = require('@hapi/boom');
 const app = require('express')();
 const server = require('http').createServer(app);
-
 const bodyParser = require('body-parser');
-
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/assets', express.static(__dirname + '../client/assets'));
@@ -219,15 +217,6 @@ const handleSocketConnection = async (socket) => {
     console.log('in handle socket');
   }
 };
-
-// io.on('connection', async (socket) => {
-//   soket = socket;
-//   if (isConnected()) {
-//     updateQR('connected');
-//   } else if (qrDinamic) {
-//     updateQR('qr');
-//   }
-// });
 
 // Export the router and socket connection event
 module.exports = { router, handleSocketConnection, connectToWhatsApp };
