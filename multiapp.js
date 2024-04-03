@@ -6,8 +6,6 @@ const server = require('http').createServer(app);
 const io = require('socket.io')(server);
 const port = process.env.PORT || 7000;
 const cors = require('cors');
-
-const router = express.Router();
 const qrcode = require('qrcode');
 const {
   default: makeWASocket,
@@ -32,7 +30,6 @@ const { session } = { session: 'session_auth_info' };
 const { mongoClient, authInfoCollection, sentMessagesCollection } = require('./mongodb');
 const useMongoDBAuthState = require('./mongoAuthState');
 const { Boom } = require('@hapi/boom');
-
 app.use('/assets', express.static(__dirname + './client/assets'));
 
 // Middleware
@@ -60,10 +57,6 @@ connectToWhatsApp()
     console.error('Error connecting to WhatsApp:', err);
   });
 
-server.listen(port, () => {
-  console.log('Server Running on Port: ' + port);
-});
-
 //
 //
 //
@@ -73,8 +66,10 @@ server.listen(port, () => {
 let sock;
 let qrDinamic;
 let soket;
+const clients = {};
+
 // Connect to WhatsApp function
-async function connectToWhatsApp() {
+async function connectToWhatsApp(clientId) {
   try {
     console.log('Initiating WhatsApp connection');
     await mongoClient.connect();
@@ -152,8 +147,11 @@ async function connectToWhatsApp() {
     });
 
     sock.ev.on('creds.update', saveCreds);
+
+    // Store the connection for the client
+    clients[clientId] = sock;
   } catch (error) {
-    console.log('Error connecting to WhatsApp:', error);
+    console.log(`Error connecting to WhatsApp for client ${clientId}:`, error);
   }
 }
 
@@ -192,7 +190,9 @@ const updateQR = (data) => {
 app.get('/send-message', async (req, res) => {
   const tempMessage = req.query.message;
   const number = req.query.number;
-  console.log('Message:', tempMessage, 'Number:', number);
+  const clientId = req.query.clientId;
+
+  console.log('Message:', tempMessage, 'Number:', number, 'ClientId:', clientId);
   let numberWA;
   try {
     if (!number) {
@@ -265,3 +265,7 @@ const handleSocketConnection = async (socket) => {
 };
 
 io.on('connection', handleSocketConnection);
+
+server.listen(port, () => {
+  console.log('Server Running on Port: ' + port);
+});
