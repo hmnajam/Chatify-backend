@@ -1,12 +1,24 @@
 const axios = require('axios');
 
-// Define the endpoint URL
-const homeUrl = 'https://chatify-drlab.onrender.com/';
+// Define the base URL
+const baseUrl = 'http://localhost:8000/';
+
+// 'https://chatify-drlab.onrender.com/';
+
+// Define endpoint URLs
+const endpoints = {
+  home: baseUrl,
+  scan: baseUrl + 'scan/',
+  pastMessages: baseUrl + 'get-all-messages/',
+  apiDocs: baseUrl + 'api-docs/',
+  sendMessage: baseUrl + 'send-message/'
+};
+
 // Define the test using Jest
 test('Verify home page is working.', async () => {
   try {
     // Make GET request to the homepage
-    const response = await axios.get(homeUrl);
+    const response = await axios.get(endpoints.home);
     // Verify the response status
     expect(response.status).toBe(200);
   } catch (error) {
@@ -15,13 +27,11 @@ test('Verify home page is working.', async () => {
   }
 });
 
-// Define the endpoint URL
-const scanUrl = 'https://chatify-drlab.onrender.com/scan';
 // Define the test using Jest
 test('Verify scan page is working.', async () => {
   try {
     // Make GET request to the homepage
-    const response = await axios.get(scanUrl);
+    const response = await axios.get(endpoints.scan);
     // Verify the response status
     expect(response.status).toBe(200);
   } catch (error) {
@@ -30,13 +40,11 @@ test('Verify scan page is working.', async () => {
   }
 });
 
-// Define the endpoint URL
-const pastMessagesUrl = 'https://chatify-drlab.onrender.com/get-all-messages';
 // Define the test using Jest
 test('Verify get all messages page is working.', async () => {
   try {
     // Make GET request to the homepage
-    const response = await axios.get(pastMessagesUrl);
+    const response = await axios.get(endpoints.pastMessages);
     // Verify the response status
     expect(response.status).toBe(200);
   } catch (error) {
@@ -45,13 +53,11 @@ test('Verify get all messages page is working.', async () => {
   }
 });
 
-// Define the endpoint URL
-const apiDocsUrl = 'https://chatify-drlab.onrender.com/api-docs/';
 // Define the test using Jest
 test('Verify get all messages page is working.', async () => {
   try {
     // Make GET request to the homepage
-    const response = await axios.get(apiDocsUrl);
+    const response = await axios.get(endpoints.apiDocs);
     // Verify the response status
     expect(response.status).toBe(200);
   } catch (error) {
@@ -60,16 +66,14 @@ test('Verify get all messages page is working.', async () => {
   }
 });
 
-// Define the endpoint URL
-const sendMessageUrl = 'https://chatify-drlab.onrender.com/send-message';
 // Define the test using Jest
 test('Verify send-message endpoint with correct parameters', async () => {
   try {
     // Make GET request to the endpoint
-    const response = await axios.get(sendMessageUrl, {
+    const response = await axios.get(endpoints.sendMessage, {
       params: {
         number: '923131060542',
-        message: 'ping',
+        message: 'Testing Testing',
         sessionId: 'najam'
       }
     });
