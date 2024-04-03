@@ -1,10 +1,8 @@
-// routes/index.js
-
-const home = require("./home");
-const scan = require("./scan");
-const allMessages = require("./allMessages");
-const sendMessageRouter = require("./sendMessage");
-const { swaggerUi, swaggerSpecs } = require("./api-docs");
+const home = require('./home');
+const scan = require('./scan');
+const allMessages = require('./allMessages');
+const sendMessageRouter = require('./sendMessage');
+const { swaggerUi, swaggerSpecs } = require('./api-docs');
 
 module.exports = {
   home,
@@ -12,5 +10,5 @@ module.exports = {
   allMessages,
   sendMessageRouter,
   swaggerUi,
-  swaggerSpecs,
+  swaggerSpecs
 };
