@@ -1,3 +1,14 @@
+require('dotenv').config();
+const bodyParser = require('body-parser');
+const express = require('express');
+const app = require('express')();
+const server = require('http').createServer(app);
+const io = require('socket.io')(server);
+const port = process.env.PORT || 7000;
+const cors = require('cors');
+
+const router = express.Router();
+const qrcode = require('qrcode');
 const {
   default: makeWASocket,
   Browsers,
@@ -14,322 +25,227 @@ const {
   makeInMemoryStore,
   MessageRetryMap,
   useMultiFileAuthState,
-  msgRetryCounterMap,
-} = require("@whiskeysockets/baileys");
-const log = (pino = require("pino"));
-const { session } = { session: "session_auth_info" };
-const { Boom } = require("@hapi/boom");
-const path = require("path");
-const fs = require("fs");
-const express = require("express");
-const fileUpload = require("express-fileupload");
-const cors = require("cors");
-require("dotenv").config();
-const mongoURL = `mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_CLUSTER}`;
-const useMongoDBAuthState = require("./mongoAuthState");
-const { MongoClient, ServerApiVersion } = require("mongodb");
-const bodyParser = require("body-parser");
-(swaggerJsdoc = require("swagger-jsdoc")),
-  (swaggerUi = require("swagger-ui-express"));
-const app = require("express")();
-app.use(
-  fileUpload({
-    createParentPath: true,
-  })
-);
-app.use(cors());
+  msgRetryCounterMap
+} = require('@whiskeysockets/baileys');
+const log = require('pino');
+const { session } = { session: 'session_auth_info' };
+const { mongoClient, authInfoCollection, sentMessagesCollection } = require('./mongodb');
+const useMongoDBAuthState = require('./mongoAuthState');
+const { Boom } = require('@hapi/boom');
+
+app.use('/assets', express.static(__dirname + './client/assets'));
+
+// Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use("/assets", express.static(__dirname + "/client/assets"));
-const server = require("http").createServer(app);
-const io = require("socket.io")(server);
-const port = process.env.PORT || 7000;
-const qrcode = require("qrcode");
+app.use(cors());
+app.use('/assets', express.static(__dirname + '/client/assets'));
 
-// Home page
-app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/index.html");
-  // res.send("server working");
-});
+// // Importing Routes
+const routes = require('./routes');
+const { home, scan, allMessages, swaggerUi, swaggerSpecs } = routes;
 
-// /**
-//  * @swagger
-//  * paths:
-//  *   /scan:
-//  *     get:
-//  *       summary: Serve index.html for scanning
-//  *       responses:
-//  *         '200':
-//  *           description: User logged in successfully
-//  *       x-swagger-router-controller: scan
-//  *       operationId: index
-//  *       tags:
-//  *         - scan
-//  */
-app.get("/scan", (req, res) => {
-  res.sendFile("./client/index.html", {
-    root: __dirname,
+// Using simplified routes
+app.use('/', home);
+app.use('/', scan);
+app.use('/', allMessages);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, { explorer: true }));
+
+// WhatsApp Connection Success
+connectToWhatsApp()
+  .then(() => {
+    console.log('Connected to WhatsApp successfully');
+  })
+  .catch((err) => {
+    console.error('Error connecting to WhatsApp:', err);
   });
+
+server.listen(port, () => {
+  console.log('Server Running on Port: ' + port);
 });
+
+//
+//
+//
+//
+//
 
 let sock;
 let qrDinamic;
 let soket;
-
-// Defining mongoClient for mongodb connection
-const mongoClient = new MongoClient(mongoURL, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  },
-});
-
+// Connect to WhatsApp function
 async function connectToWhatsApp() {
   try {
-    console.log('Initiating whtsapp connection');
+    console.log('Initiating WhatsApp connection');
     await mongoClient.connect();
-    const collection = mongoClient
-      .db("whatsapp_api")
-      .collection("auth_info_baileys");
-    const { state, saveCreds } = await useMongoDBAuthState(collection);
+    const { state, saveCreds } = await useMongoDBAuthState(authInfoCollection);
 
+    // Creating WhatsApp client
     sock = makeWASocket({
-      browser: Browsers.macOS("Chatify"),
+      browser: Browsers.macOS('Chatify'),
       printQRInTerminal: true,
       auth: state,
-      logger: log({ level: "silent" }),
+      logger: log({ level: 'silent' })
     });
 
-    const connectionPromise = new Promise((resolve) => {
-      sock.ev.on("connection.update", async (update) => {
-        const { connection, lastDisconnect, qr } = update;
-        qrDinamic = qr;
-        if (connection === "close") {
-          let reason = new Boom(lastDisconnect.error).output.statusCode;
-          if (reason === DisconnectReason.badSession) {
-            console.log(
-              `Bad Session File, Please Delete ${session} and Scan Again`
-            );
-            sock.logout();
-          } else if (reason === DisconnectReason.connectionClosed) {
-            console.log("Connection closed, reconnecting...");
-            connectToWhatsApp();
-          } else if (reason === DisconnectReason.connectionLost) {
-            console.log("Server connection lost, reconnecting...");
-            connectToWhatsApp();
-          } else if (reason === DisconnectReason.connectionReplaced) {
-            console.log(
-              "Connection replaced, another new session opened, please close the current session first"
-            );
-            sock.logout();
-          } else if (reason === DisconnectReason.loggedOut) {
-            console.log(`Device closed, remove it ${session} and scan again.`);
-            sock.logout();
-          } else if (reason === DisconnectReason.restartRequired) {
-            console.log("Restart required, restarting...");
-            connectToWhatsApp();
-          } else if (reason === DisconnectReason.timedOut) {
-            console.log("Connection time expired, connecting...");
-            connectToWhatsApp();
-          } else {
-            sock.end(
-              `Unknown disconnection reason: ${reason}|${lastDisconnect.error}`
-            );
-          }
-        } else if (connection === "open") {
-          console.log("Connected ");
-          resolve();
-          return;
+    sock.ev.on('connection.update', async (update) => {
+      const { connection, lastDisconnect, qr } = update;
+      qrDinamic = qr;
+      if (connection === 'close') {
+        let reason = new Boom(lastDisconnect.error).output.statusCode;
+        if (reason === DisconnectReason.badSession) {
+          console.log(`Bad Session File, Please Delete ${session} and Scan Again`);
+          sock.logout();
+        } else if (reason === DisconnectReason.connectionClosed) {
+          console.log('Connection closed, reconnecting...');
+          connectToWhatsApp();
+        } else if (reason === DisconnectReason.connectionLost) {
+          console.log('Server connection lost, reconnecting...');
+          connectToWhatsApp();
+        } else if (reason === DisconnectReason.connectionReplaced) {
+          console.log('Connection replaced, another new session opened, please close the current session first');
+          sock.logout();
+        } else if (reason === DisconnectReason.loggedOut) {
+          console.log(`Device closed, remove it ${session} and scan again.`);
+          sock.logout();
+        } else if (reason === DisconnectReason.restartRequired) {
+          console.log('Restart required, restarting...');
+          connectToWhatsApp();
+        } else if (reason === DisconnectReason.timedOut) {
+          console.log('Connection time expired, connecting...');
+          connectToWhatsApp();
+        } else {
+          sock.end(`Unknown disconnection reason: ${reason}|${lastDisconnect.error}`);
         }
-      });
-    });
-
-    sock.ev.on("messages.upsert", async ({ messages, type }) => {
-      try {
-        if (type === "notify" && !messages[0]?.key.fromMe) {
-          const { key, message } = messages[0];
-          const { extendedTextMessage } = message;
-          if (
-            extendedTextMessage &&
-            extendedTextMessage.text.toLowerCase() === "ping"
-          ) {
-            console.log("Received ping, sending pong.");
-            await sock.sendMessage(
-              key.remoteJid,
-              { text: "Pong" },
-              { quoted: messages[0] }
-            );
-          } else if (extendedTextMessage) {
-            console.log(
-              `Received message: (${extendedTextMessage.text}) from: ${key.remoteJid}`
-            );
-          } else {
-            console.log("No valid message content found.");
-          }
-        }
-      } catch (error) {
-        console.log("We encountered some Error:", error);
+      } else if (connection === 'open') {
+        console.log('Connected ');
+        return;
       }
     });
 
-    sock.ev.on("creds.update", saveCreds);
-  } catch {
-    console.log("Error connecting to WhatsApp:", error);
-  }
-}
+    sock.ev.on('messages.upsert', async ({ messages, type }) => {
+      try {
+        if (type === 'notify' && !messages[0]?.key.fromMe) {
+          const { key, message } = messages[0];
 
-// Function to retrieve all messages from MongoDB
-async function getAllMessagesFromDB() {
-  try {
-    const allMessages = await mongoClient
-      .db("whatsapp_api")
-      .collection("sent_messages")
-      .find(
-        {},
-        { projection: { recipient: 1, message: 1, timestamp: 1, _id: 0 } }
-      )
-      .sort({ timestamp: -1 }) // Sort in descending order based on timestamp
-      .limit(20) // Limit the result to the last 20 messages
-      .toArray();
-    return allMessages;
-  } catch (error) {
-    console.error("Error retrieving messages from database:", error);
-    throw error;
-  }
-}
+          if (message.conversation) {
+            const { extendedTextMessage } = message;
 
-app.get("/get-all-messages", async (req, res) => {
-  try {
-    const allMessages = await getAllMessagesFromDB();
-    res.setHeader("Content-Type", "application/json");
-    res.status(200).send(
-      JSON.stringify(
-        {
-          status: true,
-          response: allMessages,
-        },
-        null,
-        4
-      )
-    );
-  } catch (error) {
-    res.status(500).json({
-      status: false,
-      response: "Error retrieving messages",
+            if (messages[0].message.conversation.toLowerCase() === 'ping') {
+              console.log('Received ping, sending pong.');
+              await sock.sendMessage(key.remoteJid, { text: 'Pong' }, { quoted: messages[0] });
+            } else if (messages[0].message.conversation.toLowerCase() === 'testing') {
+              console.log('Received testing, sending tested.');
+              await sock.sendMessage(key.remoteJid, { text: 'Tested' }, { quoted: messages[0] });
+            } else if (extendedTextMessage) {
+              console.log(`Received message: (${extendedTextMessage.text}) from: ${key.remoteJid}`);
+            } else {
+              console.log('No valid message content found.', messages[0].message.conversation);
+            }
+          } else {
+            console.log('No conversation found in the message.');
+          }
+        }
+      } catch (error) {
+        console.log('We encountered some Error:', error);
+      }
     });
-  }
-  //
-});
 
+    sock.ev.on('creds.update', saveCreds);
+  } catch (error) {
+    console.log('Error connecting to WhatsApp:', error);
+  }
+}
+
+// Check if connected to WhatsApp
 const isConnected = () => {
   return sock?.user ? true : false;
 };
 
-/**
- * @swagger
- * paths:
- *   /send-message:
- *     get:
- *       summary: Send a WhatsApp message
- *       parameters:
- *         - name: message
- *           in: query
- *           description: The message to be sent
- *           required: true
- *           schema:
- *             type: string
- *         - name: number
- *           in: query
- *           description: The recipient's phone number
- *           required: true
- *           schema:
- *             type: string
- *       responses:
- *         '200':
- *           description: Successful response
- *           content:
- *             application/json:
- *               example:
- *                 status: true
- *                 response: Success message
- *         '500':
- *           description: Error response
- *           content:
- *             application/json:
- *               example:
- *                 status: false
- *                 response: Error message
- *       x-swagger-router-controller: sendMessage
- *       operationId: index
- *       tags:
- *         - sendMessage
- */
-app.get("/send-message", async (req, res) => {
+// Update QR code function
+const updateQR = (data) => {
+  switch (data) {
+    case 'qr':
+      qrcode.toDataURL(qrDinamic, (err, url) => {
+        soket?.emit('qr', url);
+        soket?.emit('log', 'QR code received, scan');
+        console.log('sending qr code');
+      });
+      break;
+    case 'connected':
+      soket?.emit('qrstatus', './assets/check.svg');
+      soket?.emit('log', ' User connected');
+      const { id, name } = sock?.user;
+      var userinfo = id + ' ' + name;
+      soket?.emit('user', userinfo);
+      break;
+    case 'loading':
+      soket?.emit('qrstatus', './assets/loader.gif');
+      soket?.emit('log', 'Loading....');
+      break;
+    default:
+      break;
+  }
+};
+
+// Route to send a WhatsApp message
+app.get('/send-message', async (req, res) => {
   const tempMessage = req.query.message;
   const number = req.query.number;
-  console.log("Message:", tempMessage, "Number:", number);
-  await mongoClient.connect();
-  const database = process.env.Database || "whatsapp_api";
-  const table = process.env.Collection || "sent_messages";
-  console.log("Databse is", database, "and collection is", table);
-
-  // New connection for sent messages with env values.
-  const messagesCollection = mongoClient.db(database).collection(table);
-
+  console.log('Message:', tempMessage, 'Number:', number);
   let numberWA;
   try {
     if (!number) {
       res.status(500).json({
         status: false,
-        response: "The number does not exist",
+        response: 'The number does not exist'
       });
     } else {
-      numberWA = number + "@s.whatsapp.net";
+      numberWA = number + '@s.whatsapp.net';
 
       if (isConnected()) {
         const exist = await sock.onWhatsApp(numberWA);
-        console.log("Chacking existance of the number", exist);
+        console.log('Checking existence of the number', exist);
         if (exist?.jid || (exist && exist[0]?.jid)) {
           sock
             .sendMessage(exist.jid || exist[0].jid, {
-              text: tempMessage,
+              text: tempMessage
             })
             .then(async (result) => {
               // Save sent message to the database
               try {
-                await messagesCollection.insertOne({
+                await sentMessagesCollection.insertOne({
                   sender: sock.user.id,
                   recipient: numberWA,
                   message: tempMessage,
-                  timestamp: new Date(),
+                  timestamp: new Date()
                 });
-                console.log("Message saved to database successfully");
+                console.log('Message saved to database successfully');
               } catch (error) {
-                console.error("Error saving message to database:", error);
+                console.error('Error saving message to database:', error);
               }
               // Send the response
               res.status(200).json({
                 status: true,
-                response: result,
+                response: result
               });
             })
             .catch((err) => {
               res.status(500).json({
                 status: false,
-                response: err,
+                response: err
               });
             });
         } else {
           res.status(500).json({
             status: false,
-            response: "This number is not on Whatsapp.",
+            response: 'This number is not on WhatsApp.'
           });
         }
       } else {
         res.status(500).json({
           status: false,
-          response: "You are not connected yet",
+          response: 'You are not connected yet'
         });
       }
     }
@@ -338,76 +254,14 @@ app.get("/send-message", async (req, res) => {
   }
 });
 
-io.on("connection", async (socket) => {
+// Socket connection event
+const handleSocketConnection = async (socket) => {
   soket = socket;
   if (isConnected()) {
-    updateQR("connected");
+    updateQR('connected');
   } else if (qrDinamic) {
-    updateQR("qr");
-  }
-});
-
-const updateQR = (data) => {
-  switch (data) {
-    case "qr":
-      qrcode.toDataURL(qrDinamic, (err, url) => {
-        soket?.emit("qr", url);
-        soket?.emit("log", "QR code received, scan");
-      });
-      break;
-    case "connected":
-      soket?.emit("qrstatus", "./assets/check.svg");
-      soket?.emit("log", " User connected");
-      const { id, name } = sock?.user;
-      var userinfo = id + " " + name;
-      soket?.emit("user", userinfo);
-      break;
-    case "loading":
-      soket?.emit("qrstatus", "./assets/loader.gif");
-      soket?.emit("log", "Loading....");
-      break;
-    default:
-      break;
+    updateQR('qr');
   }
 };
-connectToWhatsApp().catch((err) =>
-  console.log("unexpected error in connecting to whatsapp: " + err)
-); // catch any errors
 
-// Swagger options
-const options = {
-  definition: {
-    openapi: "3.1.0",
-    info: {
-      title: "Chatterly APIs with Swagger",
-      version: "0.1.0",
-      description: "Official swagger documentation of Chatterly APIs.",
-      license: {
-        name: "MIT",
-        url: "https://spdx.org/licenses/MIT.html",
-      },
-      contact: {
-        name: "Najam Saeed",
-        url: "https://najam.pk/",
-        email: "hmnajam@gmail.com",
-      },
-    },
-    servers: [
-      {
-        url: "http://localhost:8000",
-      },
-    ],
-  },
-  apis: ["./appb.js"],
-};
-
-const specs = swaggerJsdoc(options);
-app.use(
-  "/api-docs",
-  swaggerUi.serve,
-  swaggerUi.setup(specs, { explorer: true })
-);
-
-server.listen(port, () => {
-  console.log("Server Running on Port : " + port);
-});
+io.on('connection', handleSocketConnection);
