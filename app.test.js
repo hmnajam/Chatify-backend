@@ -73,7 +73,7 @@ test('Verify send-message endpoint with correct parameters', async () => {
     const response = await axios.get(endpoints.sendMessage, {
       params: {
         number: '923131060542',
-        message: 'Testing Testing',
+        message: 'Testing',
         sessionId: 'najam'
       }
     });
