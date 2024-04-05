@@ -1,28 +1,33 @@
 const express = require('express');
 const router = express.Router();
-
 //
+
+const app = require('express')();
+const server = require('http').createServer(app);
+const io = require('socket.io')(server);
 const { sock, isConnected } = require('../routes/whatsappService');
-//
-//
 
+
+console.log(sock);
 // Route to send a WhatsApp message
 router.get('/send-message', async (req, res) => {
   const tempMessage = req.query.message;
   const number = req.query.number;
-  console.log('Message:', tempMessage, 'Number:', number);``
+  console.log('Message:', tempMessage, 'Number:', number);
   let numberWA;
   try {
-    console.log('Hey there');
+    console.log('Send Message api just got hit.');
     if (!number) {
       res.status(500).json({
         status: false,
         response: 'The number does not exist'
       });
+      return;
     } else {
       numberWA = number + '@s.whatsapp.net';
 
       if (isConnected()) {
+        console.log('At is connected');
         const exist = await sock.onWhatsApp(numberWA);
         console.log('Checking existence of the number', exist);
         if (exist?.jid || (exist && exist[0]?.jid)) {
