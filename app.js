@@ -16,7 +16,9 @@ app.use('/assets', express.static(__dirname + '/client/assets'));
 // // Importing Routes
 const routes = require('./routes');
 const { home, scan, allMessages, swaggerUi, swaggerSpecs } = routes;
-const { router: sendMessageRouter, handleSocketConnection, connectToWhatsApp } = require('./routes/sendMessage');
+const { router: sendMessageRouter } = require('./routes/sendMessage');
+const { connectToWhatsApp, handleSocketConnection } = require('./routes/whatsappService');
+
 io.on('connection', handleSocketConnection);
 
 // WhatsApp Connection Success
