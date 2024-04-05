@@ -1,5 +1,4 @@
 require('dotenv').config();
-const bodyParser = require('body-parser');
 const express = require('express');
 const app = require('express')();
 const server = require('http').createServer(app);
@@ -33,8 +32,6 @@ const { Boom } = require('@hapi/boom');
 app.use('/assets', express.static(__dirname + './client/assets'));
 
 // Middleware
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors());
 app.use('/assets', express.static(__dirname + '/client/assets'));
 
@@ -48,24 +45,10 @@ app.use('/', scan);
 app.use('/', allMessages);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, { explorer: true }));
 
-// WhatsApp Connection Success
-connectToWhatsApp()
-  .then(() => {
-    console.log('Connected to WhatsApp successfully');
-  })
-  .catch((err) => {
-    console.error('Error connecting to WhatsApp:', err);
-  });
-
-//
-//
-//
-//
-//
-
 let sock;
 let qrDinamic;
 let soket;
+let clientId;
 const clients = {};
 
 // Connect to WhatsApp function
@@ -190,8 +173,7 @@ const updateQR = (data) => {
 app.get('/send-message', async (req, res) => {
   const tempMessage = req.query.message;
   const number = req.query.number;
-  const clientId = req.query.clientId;
-
+  clientId = req.query.clientId;
   console.log('Message:', tempMessage, 'Number:', number, 'ClientId:', clientId);
   let numberWA;
   try {
@@ -202,8 +184,9 @@ app.get('/send-message', async (req, res) => {
       });
     } else {
       numberWA = number + '@s.whatsapp.net';
+      // const sock = clients[clientId];
 
-      if (isConnected()) {
+      if (isConnected(clientId)) {
         const exist = await sock.onWhatsApp(numberWA);
         console.log('Checking existence of the number', exist);
         if (exist?.jid || (exist && exist[0]?.jid)) {
@@ -254,11 +237,21 @@ app.get('/send-message', async (req, res) => {
   }
 });
 
+// WhatsApp Connection Success
+connectToWhatsApp(clientId)
+  .then(() => {
+    console.log('Connected to WhatsApp successfully');
+  })
+  .catch((err) => {
+    console.error('Error connecting to WhatsApp:', err);
+  });
+
 // Socket connection event
 const handleSocketConnection = async (socket) => {
   soket = socket;
-  if (isConnected()) {
-    updateQR('connected');
+  const clientId = socket.id;
+  if (isConnected(clientId)) {
+    updateQR('connected', socket);
   } else if (qrDinamic) {
     updateQR('qr');
   }
@@ -266,6 +259,7 @@ const handleSocketConnection = async (socket) => {
 
 io.on('connection', handleSocketConnection);
 
+console.log(clients);
 server.listen(port, () => {
   console.log('Server Running on Port: ' + port);
 });
