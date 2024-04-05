@@ -5,10 +5,15 @@ const router = express.Router();
 const app = require('express')();
 const server = require('http').createServer(app);
 const io = require('socket.io')(server);
-const { sock, isConnected } = require('../routes/whatsappService');
+const { sock, isConnected } = require('./whatsappService');
 
+// Run the isConnected function after 5 seconds
+setTimeout(() => {
+  const isConnectedToWhatsApp = isConnected();
+  console.log('Connected to WhatsApp in send message file:', isConnectedToWhatsApp);
+  console.log(sock);
+}, 6000);
 
-console.log(sock);
 // Route to send a WhatsApp message
 router.get('/send-message', async (req, res) => {
   const tempMessage = req.query.message;
@@ -28,6 +33,7 @@ router.get('/send-message', async (req, res) => {
 
       if (isConnected()) {
         console.log('At is connected');
+        console.log(isConnected());
         const exist = await sock.onWhatsApp(numberWA);
         console.log('Checking existence of the number', exist);
         if (exist?.jid || (exist && exist[0]?.jid)) {
@@ -77,12 +83,6 @@ router.get('/send-message', async (req, res) => {
     res.status(500).send(err);
   }
 });
-
-// Run the isConnected function after 5 seconds
-setTimeout(() => {
-  const isConnectedToWhatsApp = isConnected();
-  console.log('Connected to WhatsApp in send message file:', isConnectedToWhatsApp);
-}, 5000);
 
 // Export the router and socket connection event
 module.exports = { router };
