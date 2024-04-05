@@ -20,14 +20,11 @@ const {
 } = require('@whiskeysockets/baileys');
 const log = require('pino');
 const { session } = { session: 'session_auth_info' };
-const { mongoClient, authInfoCollection, sentMessagesCollection } = require('../mongodb');
+const { mongoClient, authInfoCollection } = require('../mongodb');
 const useMongoDBAuthState = require('../mongoAuthState');
 const { Boom } = require('@hapi/boom');
 const app = require('express')();
-const server = require('http').createServer(app);
-const bodyParser = require('body-parser');
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+
 app.use('/assets', express.static(__dirname + '../client/assets'));
 
 let sock;
@@ -165,4 +162,4 @@ setTimeout(() => {
 }, 5000);
 
 // Export the whatsapp and socket connection event
-module.exports = { handleSocketConnection, connectToWhatsApp, sock, isConnected };
+module.exports = { handleSocketConnection, connectToWhatsApp, sock: sock, isConnected };
