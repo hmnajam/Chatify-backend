@@ -5,13 +5,13 @@ const router = express.Router();
 const app = require('express')();
 const server = require('http').createServer(app);
 const io = require('socket.io')(server);
-const { sock, isConnected } = require('./whatsappService');
+const { sock, getSock, isConnected } = require('./whatsappService');
 
 // Run the isConnected function after 5 seconds
 setTimeout(() => {
   const isConnectedToWhatsApp = isConnected();
   console.log('Connected to WhatsApp in send message file:', isConnectedToWhatsApp);
-  console.log(sock);
+  console.log('14', sock);
 }, 6000);
 
 // Route to send a WhatsApp message
@@ -32,9 +32,16 @@ router.get('/send-message', async (req, res) => {
       numberWA = number + '@s.whatsapp.net';
 
       if (isConnected()) {
-        console.log('At is connected');
+        console.log('At is connected in sendMessage.js');
         console.log(isConnected());
-        const exist = await sock.onWhatsApp(numberWA);
+        const exist2 = await sock.onWhatsApp(numberWA);
+        if (exist2) {
+          console.log('in exist2');
+          sock.sendMessage(exist.jid || exist[0].jid, {
+            text: tempMessage
+          });
+        }
+        const exist = await getSock.onWhatsApp(numberWA);
         console.log('Checking existence of the number', exist);
         if (exist?.jid || (exist && exist[0]?.jid)) {
           sock

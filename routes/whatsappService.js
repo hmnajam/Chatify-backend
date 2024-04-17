@@ -27,7 +27,7 @@ const app = require('express')();
 
 app.use('/assets', express.static(__dirname + '../client/assets'));
 
-let sock;
+var sock;
 let qrDinamic;
 let soket;
 // Connect to WhatsApp function
@@ -75,7 +75,7 @@ async function connectToWhatsApp() {
           sock.end(`Unknown disconnection reason: ${reason}|${lastDisconnect.error}`);
         }
       } else if (connection === 'open') {
-        console.log('Connected ');
+        console.log('Connected to Whatsapp Servers.');
         return;
       }
     });
@@ -158,8 +158,12 @@ const handleSocketConnection = async (socket) => {
 // Run the isConnected function after 5 seconds
 setTimeout(() => {
   const isConnectedToWhatsApp = isConnected();
-  console.log('Connected to WhatsApp:', isConnectedToWhatsApp);
+  console.log('Connected to WhatsApp in WhatsappService.js  :', isConnectedToWhatsApp);
 }, 5000);
 
+const getSock = () => {
+  return sock;
+};
+
 // Export the whatsapp and socket connection event
-module.exports = { handleSocketConnection, connectToWhatsApp, sock: sock, isConnected };
+module.exports = { handleSocketConnection, connectToWhatsApp, sock, isConnected, getSock };
