@@ -116,6 +116,10 @@ async function connectToWhatsApp() {
   } catch (error) {
     console.log('Error connecting to WhatsApp:', error);
   }
+  // finally {
+  //   // Ensure that the client is closed when you finish/error
+  //   await mongoClient.close();
+  // }
 }
 
 // Check if connected to WhatsApp
