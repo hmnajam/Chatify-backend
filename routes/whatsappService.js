@@ -1,22 +1,22 @@
 const express = require('express');
 const qrcode = require('qrcode');
 const {
-  default: makeWASocket,
-  Browsers,
-  MessageType,
-  MessageOptions,
-  Mimetype,
-  DisconnectReason,
-  BufferJSON,
-  AnyMessageContent,
-  delay,
-  fetchLatestBaileysVersion,
-  isJidBroadcast,
-  makeCacheableSignalKeyStore,
-  makeInMemoryStore,
-  MessageRetryMap,
-  useMultiFileAuthState,
-  msgRetryCounterMap
+    default: makeWASocket,
+    Browsers,
+    MessageType,
+    MessageOptions,
+    Mimetype,
+    DisconnectReason,
+    BufferJSON,
+    AnyMessageContent,
+    delay,
+    fetchLatestBaileysVersion,
+    isJidBroadcast,
+    makeCacheableSignalKeyStore,
+    makeInMemoryStore,
+    MessageRetryMap,
+    useMultiFileAuthState,
+    msgRetryCounterMap
 } = require('@whiskeysockets/baileys');
 const log = require('pino');
 const { session } = { session: 'session_auth_info' };
@@ -27,143 +27,173 @@ const app = require('express')();
 
 app.use('/assets', express.static(__dirname + '../client/assets'));
 
-var sock;
+// let sock; // variable declare
 let qrDinamic;
 let soket;
+
 // Connect to WhatsApp function
 async function connectToWhatsApp() {
-  try {
-    console.log('Initiating WhatsApp connection');
-    await mongoClient.connect();
-    const { state, saveCreds } = await useMongoDBAuthState(authInfoCollection);
+    try {
 
-    // Creating WhatsApp client
-    sock = makeWASocket({
-      browser: Browsers.macOS('Chatify'),
-      printQRInTerminal: true,
-      auth: state,
-      logger: log({ level: 'silent' })
-    });
+        console.log('Initiating WhatsApp connection');
 
-    sock.ev.on('connection.update', async (update) => {
-      const { connection, lastDisconnect, qr } = update;
-      qrDinamic = qr;
-      if (connection === 'close') {
-        let reason = new Boom(lastDisconnect.error).output.statusCode;
-        if (reason === DisconnectReason.badSession) {
-          console.log(`Bad Session File, Please Delete ${session} and Scan Again`);
-          sock.logout();
-        } else if (reason === DisconnectReason.connectionClosed) {
-          console.log('Connection closed, reconnecting...');
-          connectToWhatsApp();
-        } else if (reason === DisconnectReason.connectionLost) {
-          console.log('Server connection lost, reconnecting...');
-          connectToWhatsApp();
-        } else if (reason === DisconnectReason.connectionReplaced) {
-          console.log('Connection replaced, another new session opened, please close the current session first');
-          sock.logout();
-        } else if (reason === DisconnectReason.loggedOut) {
-          console.log(`Device closed, remove it ${session} and scan again.`);
-          sock.logout();
-        } else if (reason === DisconnectReason.restartRequired) {
-          console.log('Restart required, restarting...');
-          connectToWhatsApp();
-        } else if (reason === DisconnectReason.timedOut) {
-          console.log('Connection time expired, connecting...');
-          connectToWhatsApp();
-        } else {
-          sock.end(`Unknown disconnection reason: ${reason}|${lastDisconnect.error}`);
-        }
-      } else if (connection === 'open') {
-        console.log('Connected to Whatsapp Servers.');
-        return;
-      }
-    });
+        await mongoClient.connect();
+        const { state, saveCreds } = await useMongoDBAuthState(authInfoCollection);
 
-    sock.ev.on('messages.upsert', async ({ messages, type }) => {
-      try {
-        if (type === 'notify' && !messages[0]?.key.fromMe) {
-          const { key, message } = messages[0];
+        // Creating WhatsApp client
+        const sock = makeWASocket({
+            browser: Browsers.macOS('Chatify'),
+            printQRInTerminal: true,
+            auth: state,
+            logger: log({ level: 'silent' })
+        });
 
-          if (message.conversation) {
-            const { extendedTextMessage } = message;
+        sock.ev.on('connection.update', async (update) => {
 
-            if (messages[0].message.conversation.toLowerCase() === 'ping') {
-              console.log('Received ping, sending pong.');
-              await sock.sendMessage(key.remoteJid, { text: 'Pong' }, { quoted: messages[0] });
-            } else if (messages[0].message.conversation.toLowerCase() === 'testing') {
-              console.log('Received testing, sending tested.');
-              await sock.sendMessage(key.remoteJid, { text: 'Tested' }, { quoted: messages[0] });
-            } else if (extendedTextMessage) {
-              console.log(`Received message: (${extendedTextMessage.text}) from: ${key.remoteJid}`);
-            } else {
-              console.log('No valid message content found.', messages[0].message.conversation);
+            const { connection, lastDisconnect, qr } = update;
+
+            qrDinamic = qr;
+
+            if (connection === 'close') {
+
+                let reason = new Boom(lastDisconnect.error).output.statusCode;
+
+                if (reason === DisconnectReason.badSession) {
+
+                    console.log(`Bad Session File, Please Delete ${session} and Scan Again`);
+                    sock.logout();
+
+                } else if (reason === DisconnectReason.connectionClosed) {
+
+                    console.log('Connection closed, reconnecting...');
+                    connectToWhatsApp();
+
+                } else if (reason === DisconnectReason.connectionLost) {
+
+                    console.log('Server connection lost, reconnecting...');
+                    connectToWhatsApp();
+
+                } else if (reason === DisconnectReason.connectionReplaced) {
+
+                    console.log('Connection replaced, another new session opened, please close the current session first');
+                    sock.logout();
+
+                } else if (reason === DisconnectReason.loggedOut) {
+
+                    console.log(`Device closed, remove it ${session} and scan again.`);
+                    sock.logout();
+
+                } else if (reason === DisconnectReason.restartRequired) {
+
+                    console.log('Restart required, restarting...');
+                    connectToWhatsApp();
+
+                } else if (reason === DisconnectReason.timedOut) {
+
+                    console.log('Connection time expired, connecting...');
+                    connectToWhatsApp();
+
+                } else {
+
+                    sock.end(`Unknown disconnection reason: ${reason}|${lastDisconnect.error}`);
+
+                }
+            } else if (connection === 'open') {
+                
+                console.log('Connected to Whatsapp Servers.');
+                return;
             }
-          } else {
-            console.log('No conversation found in the message.');
-          }
-        }
-      } catch (error) {
-        console.log('We encountered some Error:', error);
-      }
-    });
+        });
 
-    sock.ev.on('creds.update', saveCreds);
-  } catch (error) {
-    console.log('Error connecting to WhatsApp:', error);
-  }
+        sock.ev.on('messages.upsert', async ({ messages, type }) => {
+            try {
+                if (type === 'notify' && !messages[0]?.key.fromMe) {
+                    const { key, message } = messages[0];
+
+                    if (message.conversation) {
+                        const { extendedTextMessage } = message;
+
+                        if (messages[0].message.conversation.toLowerCase() === 'ping') {
+                            console.log('Received ping, sending pong.');
+                            await sock.sendMessage(key.remoteJid, { text: 'Pong' }, { quoted: messages[0] });
+                        } else if (messages[0].message.conversation.toLowerCase() === 'testing') {
+                            console.log('Received testing, sending tested.');
+                            await sock.sendMessage(key.remoteJid, { text: 'Tested' }, { quoted: messages[0] });
+                        } else if (extendedTextMessage) {
+                            console.log(`Received message: (${extendedTextMessage.text}) from: ${key.remoteJid}`);
+                        } else {
+                            console.log('No valid message content found.', messages[0].message.conversation);
+                        }
+                    } else {
+                        console.log('No conversation found in the message.');
+                    }
+                }
+            } catch (error) {
+                console.log('We encountered some Error:', error);
+            }
+        });
+
+        sock.ev.on('creds.update', saveCreds);
+
+        return sock;
+
+    } catch (error) {
+        console.log('Error connecting to WhatsApp:', error);
+    }
 }
 
 // Check if connected to WhatsApp
-const isConnected = () => {
-  return sock?.user ? true : false;
+const isConnected = (sock) => {
+    return sock?.user ? true : false;
 };
 
 // Update QR code function
 const updateQR = (data) => {
-  switch (data) {
-    case 'qr':
-      qrcode.toDataURL(qrDinamic, (err, url) => {
-        soket?.emit('qr', url);
-        soket?.emit('log', 'QR code received, scan');
-        console.log('sending qr code');
-      });
-      break;
-    case 'connected':
-      soket?.emit('qrstatus', './assets/check.svg');
-      soket?.emit('log', ' User connected');
-      const { id, name } = sock?.user;
-      var userinfo = id + ' ' + name;
-      soket?.emit('user', userinfo);
-      break;
-    case 'loading':
-      soket?.emit('qrstatus', './assets/loader.gif');
-      soket?.emit('log', 'Loading....');
-      break;
-    default:
-      break;
-  }
+    switch (data) {
+        case 'qr':
+            qrcode.toDataURL(qrDinamic, (err, url) => {
+                soket?.emit('qr', url);
+                soket?.emit('log', 'QR code received, scan');
+                console.log('sending qr code');
+            });
+            break;
+        case 'connected':
+            soket?.emit('qrstatus', './assets/check.svg');
+            soket?.emit('log', ' User connected');
+            const { id, name } = sock?.user;
+            var userinfo = id + ' ' + name;
+            soket?.emit('user', userinfo);
+            break;
+        case 'loading':
+            soket?.emit('qrstatus', './assets/loader.gif');
+            soket?.emit('log', 'Loading....');
+            break;
+        default:
+            break;
+    }
 };
 
 // Socket connection event
 const handleSocketConnection = async (socket) => {
-  soket = socket;
-  if (isConnected()) {
-    updateQR('connected');
-  } else if (qrDinamic) {
-    updateQR('qr');
-  }
+    soket = socket;
+    if (isConnected()) {
+        updateQR('connected');
+    } else if (qrDinamic) {
+        updateQR('qr');
+    }
 };
 
 // Run the isConnected function after 5 seconds
-setTimeout(() => {
-  const isConnectedToWhatsApp = isConnected();
-  console.log('Connected to WhatsApp in WhatsappService.js  :', isConnectedToWhatsApp);
-}, 5000);
+// setTimeout(() => {
+//   const isConnectedToWhatsApp = isConnected();
+//   console.log('Connected to WhatsApp in WhatsappService.js  :', isConnectedToWhatsApp);
+// }, 5000);
 
 const getSock = () => {
-  return sock;
+    return sock;
 };
 
+
+
 // Export the whatsapp and socket connection event
-module.exports = { handleSocketConnection, connectToWhatsApp, sock, isConnected, getSock };
+module.exports = { handleSocketConnection, connectToWhatsApp, isConnected, getSock };

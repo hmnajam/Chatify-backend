@@ -22,13 +22,13 @@ const { connectToWhatsApp, handleSocketConnection } = require('./routes/whatsapp
 io.on('connection', handleSocketConnection);
 
 // WhatsApp Connection Success
-connectToWhatsApp()
-  .then(() => {
-    console.log('Connected to WhatsApp successfully');
-  })
-  .catch((err) => {
-    console.error('Error connecting to WhatsApp:', err);
-  });
+// connectToWhatsApp()
+//   .then(() => {
+//     console.log('Connected to WhatsApp successfully');
+//   })
+//   .catch((err) => {
+//     console.error('Error connecting to WhatsApp:', err);
+//   });
 
 // Using simplified routes
 app.use('/', home);
