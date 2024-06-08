@@ -84,33 +84,33 @@ async function connectToWhatsApp() {
       }
     });
 
-    sock.ev.on('messages.upsert', async ({ messages, type }) => {
-      try {
-        if (type === 'notify' && !messages[0]?.key.fromMe) {
-          const { key, message } = messages[0];
+    // sock.ev.on('messages.upsert', async ({ messages, type }) => {
+    //   try {
+    //     if (type === 'notify' && !messages[0]?.key.fromMe) {
+    //       const { key, message } = messages[0];
 
-          if (message.conversation) {
-            const { extendedTextMessage } = message;
+    //       if (message.conversation) {
+    //         const { extendedTextMessage } = message;
 
-            if (messages[0].message.conversation.toLowerCase() === 'ping') {
-              console.log('Received ping, sending pong.');
-              await sock.sendMessage(key.remoteJid, { text: 'Pong' }, { quoted: messages[0] });
-            } else if (messages[0].message.conversation.toLowerCase() === 'testing') {
-              console.log('Received testing, sending tested.');
-              await sock.sendMessage(key.remoteJid, { text: 'Tested' }, { quoted: messages[0] });
-            } else if (extendedTextMessage) {
-              console.log(`Received message: (${extendedTextMessage.text}) from: ${key.remoteJid}`);
-            } else {
-              console.log('No valid message content found.', messages[0].message.conversation);
-            }
-          } else {
-            console.log('No conversation found in the message.');
-          }
-        }
-      } catch (error) {
-        console.log('We encountered some Error:', error);
-      }
-    });
+    //         if (messages[0].message.conversation.toLowerCase() === 'ping') {
+    //           console.log('Received ping, sending pong.');
+    //           await sock.sendMessage(key.remoteJid, { text: 'Pong' }, { quoted: messages[0] });
+    //         } else if (messages[0].message.conversation.toLowerCase() === 'testing') {
+    //           console.log('Received testing, sending tested.');
+    //           await sock.sendMessage(key.remoteJid, { text: 'Tested' }, { quoted: messages[0] });
+    //         } else if (extendedTextMessage) {
+    //           console.log(`Received message: (${extendedTextMessage.text}) from: ${key.remoteJid}`);
+    //         } else {
+    //           console.log('No valid message content found.', messages[0].message.conversation);
+    //         }
+    //       } else {
+    //         console.log('No conversation found in the message.');
+    //       }
+    //     }
+    //   } catch (error) {
+    //     console.log('We encountered some Error:', error);
+    //   }
+    // });
 
     sock.ev.on('creds.update', saveCreds);
   } catch (error) {
