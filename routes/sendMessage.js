@@ -34,15 +34,17 @@ app.use('/assets', express.static(__dirname + '../client/assets'));
 let sock;
 let qrDinamic;
 let soket;
-// Connect to WhatsApp function
-async function connectToWhatsApp() {
-  try {
-    console.log('Initiating WhatsApp connection');
-    await mongoClient.connect();
-    const { state, saveCreds } = await useMongoDBAuthState(authInfoCollection);
 
-    // Creating WhatsApp client
-    sock = makeWASocket({
+// Connect to WhatsApp function
+let clients = {};
+
+async function connectToWhatsApp(clientId) {
+  try {
+    console.log(`Initiating WhatsApp connection for client: ${clientId}`);
+    await mongoClient.connect();
+    const { state, saveCreds } = await useMongoDBAuthState(authInfoCollection, clientId);
+
+    const sock = makeWASocket({
       browser: Browsers.macOS('Chatify'),
       printQRInTerminal: true,
       auth: state,
@@ -55,71 +57,39 @@ async function connectToWhatsApp() {
       if (connection === 'close') {
         let reason = new Boom(lastDisconnect.error).output.statusCode;
         if (reason === DisconnectReason.badSession) {
-          console.log(`Bad Session File, Please Delete ${session} and Scan Again`);
+          console.log(`Bad Session File for client ${clientId}, Please Delete and Scan Again`);
           sock.logout();
         } else if (reason === DisconnectReason.connectionClosed) {
-          console.log('Connection closed, reconnecting...');
-          connectToWhatsApp();
+          console.log(`Connection closed for client ${clientId}, reconnecting...`);
+          connectToWhatsApp(clientId);
         } else if (reason === DisconnectReason.connectionLost) {
-          console.log('Server connection lost, reconnecting...');
-          connectToWhatsApp();
+          console.log(`Server connection lost for client ${clientId}, reconnecting...`);
+          connectToWhatsApp(clientId);
         } else if (reason === DisconnectReason.connectionReplaced) {
-          console.log('Connection replaced, another new session opened, please close the current session first');
+          console.log(`Connection replaced for client ${clientId}, please close the current session first`);
           sock.logout();
         } else if (reason === DisconnectReason.loggedOut) {
-          console.log(`Device closed, remove it ${session} and scan again.`);
+          console.log(`Device closed for client ${clientId}, remove it and scan again.`);
           sock.logout();
         } else if (reason === DisconnectReason.restartRequired) {
-          console.log('Restart required, restarting...');
-          connectToWhatsApp();
+          console.log(`Restart required for client ${clientId}, restarting...`);
+          connectToWhatsApp(clientId);
         } else if (reason === DisconnectReason.timedOut) {
-          console.log('Connection time expired, connecting...');
-          connectToWhatsApp();
+          console.log(`Connection time expired for client ${clientId}, connecting...`);
+          connectToWhatsApp(clientId);
         } else {
-          sock.end(`Unknown disconnection reason: ${reason}|${lastDisconnect.error}`);
+          sock.end(`Unknown disconnection reason for client ${clientId}: ${reason}|${lastDisconnect.error}`);
         }
       } else if (connection === 'open') {
-        console.log('Connected ');
-        return;
+        console.log(`Client ${clientId} connected`);
+        clients[clientId] = sock; // Store the client's socket
       }
     });
 
-    // sock.ev.on('messages.upsert', async ({ messages, type }) => {
-    //   try {
-    //     if (type === 'notify' && !messages[0]?.key.fromMe) {
-    //       const { key, message } = messages[0];
-
-    //       if (message.conversation) {
-    //         const { extendedTextMessage } = message;
-
-    //         if (messages[0].message.conversation.toLowerCase() === 'ping') {
-    //           console.log('Received ping, sending pong.');
-    //           await sock.sendMessage(key.remoteJid, { text: 'Pong' }, { quoted: messages[0] });
-    //         } else if (messages[0].message.conversation.toLowerCase() === 'testing') {
-    //           console.log('Received testing, sending tested.');
-    //           await sock.sendMessage(key.remoteJid, { text: 'Tested' }, { quoted: messages[0] });
-    //         } else if (extendedTextMessage) {
-    //           console.log(`Received message: (${extendedTextMessage.text}) from: ${key.remoteJid}`);
-    //         } else {
-    //           console.log('No valid message content found.', messages[0].message.conversation);
-    //         }
-    //       } else {
-    //         console.log('No conversation found in the message.');
-    //       }
-    //     }
-    //   } catch (error) {
-    //     console.log('We encountered some Error:', error);
-    //   }
-    // });
-
     sock.ev.on('creds.update', saveCreds);
   } catch (error) {
-    console.log('Error connecting to WhatsApp:', error);
+    console.log(`Error connecting to WhatsApp for client ${clientId}:`, error);
   }
-  // finally {
-  //   // Ensure that the client is closed when you finish/error
-  //   await mongoClient.close();
-  // }
 }
 
 // Check if connected to WhatsApp
@@ -127,92 +97,76 @@ const isConnected = () => {
   return sock?.user ? true : false;
 };
 
-// Update QR code function
-const updateQR = (data) => {
-  switch (data) {
-    case 'qr':
-      qrcode.toDataURL(qrDinamic, (err, url) => {
-        soket?.emit('qr', url);
-        soket?.emit('log', 'QR code received, scan');
-        console.log('sending qr code');
-      });
-      break;
-    case 'connected':
-      soket?.emit('qrstatus', './assets/check.svg');
-      soket?.emit('log', ' User connected');
-      const { id, name } = sock?.user;
-      var userinfo = id + ' ' + name;
-      soket?.emit('user', userinfo);
-      break;
-    case 'loading':
-      soket?.emit('qrstatus', './assets/loader.gif');
-      soket?.emit('log', 'Loading....');
-      break;
-    default:
-      break;
-  }
-};
+// // Update QR code function
+// const updateQR = (data) => {
+//   switch (data) {
+//     case 'qr':
+//       qrcode.toDataURL(qrDinamic, (err, url) => {
+//         soket?.emit('qr', url);
+//         soket?.emit('log', 'QR code received, scan');
+//         console.log('sending qr code');
+//       });
+//       break;
+//     case 'connected':
+//       soket?.emit('qrstatus', './assets/check.svg');
+//       soket?.emit('log', ' User connected');
+//       const { id, name } = sock?.user;
+//       var userinfo = id + ' ' + name;
+//       soket?.emit('user', userinfo);
+//       break;
+//     case 'loading':
+//       soket?.emit('qrstatus', './assets/loader.gif');
+//       soket?.emit('log', 'Loading....');
+//       break;
+//     default:
+//       break;
+//   }
+// };
 
 // Route to send a WhatsApp message
 router.get('/send-message', async (req, res) => {
-  const tempMessage = req.query.message;
-  const number = req.query.number;
-  console.log('Message:', tempMessage, 'Number:', number);
+  const { message, number, clientId } = req.query;
+  console.log('Message:', message, 'Number:', number, 'Client:', clientId);
   let numberWA;
+
   try {
     if (!number) {
-      res.status(500).json({
-        status: false,
-        response: 'The number does not exist'
-      });
-    } else {
-      numberWA = number + '@s.whatsapp.net';
+      return res.status(500).json({ status: false, response: 'The number does not exist' });
+    }
 
-      if (isConnected()) {
-        const exist = await sock.onWhatsApp(numberWA);
-        console.log('Checking existence of the number', exist);
-        if (exist?.jid || (exist && exist[0]?.jid)) {
-          sock
-            .sendMessage(exist.jid || exist[0].jid, {
-              text: tempMessage
-            })
-            .then(async (result) => {
-              // Save sent message to the database
-              try {
-                await sentMessagesCollection.insertOne({
-                  sender: sock.user.id,
-                  recipient: numberWA,
-                  message: tempMessage,
-                  timestamp: new Date()
-                });
-                console.log('Message saved to database successfully');
-              } catch (error) {
-                console.error('Error saving message to database:', error);
-              }
-              // Send the response
-              res.status(200).json({
-                status: true,
-                response: result
+    numberWA = number + '@s.whatsapp.net';
+    const clientSock = clients[clientId];
+
+    if (clientSock) {
+      const exist = await clientSock.onWhatsApp(numberWA);
+      console.log('Checking existence of the number', exist);
+      if (exist?.jid || (exist && exist[0]?.jid)) {
+        clientSock
+          .sendMessage(exist.jid || exist[0].jid, { text: message })
+          .then(async (result) => {
+            // Save sent message to the database
+            try {
+              await sentMessagesCollection.insertOne({
+                sender: clientSock.user.id,
+                recipient: numberWA,
+                message: message,
+                timestamp: new Date()
               });
-            })
-            .catch((err) => {
-              res.status(500).json({
-                status: false,
-                response: err
-              });
-            });
-        } else {
-          res.status(500).json({
-            status: false,
-            response: 'This number is not on WhatsApp.'
+              console.log('Message saved to database successfully');
+            } catch (error) {
+              console.error('Error saving message to database:', error);
+            }
+            // Send the response
+            res.status(200).json({ status: true, response: result });
+          })
+          .catch((err) => {
+            res.status(500).json({ status: false, response: err });
           });
-        }
       } else {
-        res.status(500).json({
-          status: false,
-          response: 'You are not connected yet'
-        });
+        res.status(500).json({ status: false, response: 'This number is not on WhatsApp.' });
       }
+    } else {
+      res.status(500).json({ status: false, response: 'Client is not connected yet' });
     }
   } catch (err) {
     res.status(500).send(err);
@@ -221,11 +175,43 @@ router.get('/send-message', async (req, res) => {
 
 // Socket connection event
 const handleSocketConnection = async (socket) => {
+  const clientId = socket.handshake.query.clientId;
   soket = socket;
-  if (isConnected()) {
-    updateQR('connected');
+
+  if (clients[clientId]) {
+    updateQR('connected', clientId);
   } else if (qrDinamic) {
-    updateQR('qr');
+    updateQR('qr', clientId);
+  }
+
+  socket.on('disconnect', () => {
+    console.log(`Client ${clientId} disconnected`);
+    delete clients[clientId];
+  });
+};
+
+const updateQR = (data, clientId) => {
+  switch (data) {
+    case 'qr':
+      qrcode.toDataURL(qrDinamic, (err, url) => {
+        soket?.emit('qr', { url, clientId });
+        soket?.emit('log', 'QR code received, scan');
+        console.log(`sending qr code for client ${clientId}`);
+      });
+      break;
+    case 'connected':
+      soket?.emit('qrstatus', './assets/check.svg');
+      soket?.emit('log', `User connected for client ${clientId}`);
+      const { id, name } = clients[clientId]?.user;
+      const userinfo = `${id} ${name}`;
+      soket?.emit('user', userinfo);
+      break;
+    case 'loading':
+      soket?.emit('qrstatus', './assets/loader.gif');
+      soket?.emit('log', 'Loading....');
+      break;
+    default:
+      break;
   }
 };
 

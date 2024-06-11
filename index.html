@@ -1,48 +1,140 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <title>Hello from Chatify!</title>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-    <script>
-      setTimeout(() => {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-          disableForReducedMotion: true
-        });
-      }, 500);
-    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WhatsApp Multi-Client Connection</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
     <style>
-      @import url("https://p.typekit.net/p.css?s=1&k=vnd5zic&ht=tk&f=39475.39476.39477.39478.39479.39480.39481.39482&a=18673890&app=typekit&e=css");
-      @font-face {
-        font-family: "neo-sans";
-        src: url("https://use.typekit.net/af/00ac0a/00000000000000003b9b2033/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("woff2"), url("https://use.typekit.net/af/00ac0a/00000000000000003b9b2033/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("woff"), url("https://use.typekit.net/af/00ac0a/00000000000000003b9b2033/27/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("opentype");
-        font-style: normal;
-        font-weight: 700;
-      }
-      html {
-        font-family: neo-sans;
-        font-weight: 700;
-        font-size: calc(62rem / 16);
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
       }
       body {
-        background: white;
+        font-family: 'Montserrat', sans-serif;
+        padding: 20px;
       }
-      section {
-        border-radius: 1em;
-        padding: 1em;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        margin-right: -50%;
-        transform: translate(-50%, -50%);
+      .form-container {
+        margin: 15px 0;
+        max-width: 500px;
+      }
+      .form-container input {
+        width: 100%;
+        border: 1px solid #ccc;
+        border-radius: 2px;
+        padding: 5px 8px;
+        font-family: inherit;
+      }
+      .connect-btn {
+        padding: 6px 15px;
+        margin-top: 10px;
+        background: green;
+        color: white;
+        border: 1px solid rgb(0, 93, 0);
+        border-radius: 2px;
+      }
+      .client-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        grid-gap: 15px;
+        margin-top: 30px;
+      }
+      .client {
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 15px;
+      }
+      .client img {
+        width: 100%;
+        margin: 10px 0;
+        border: 1px solid #efefef;
+        border-radius: 4px;
+        display: none; /* Initially hide the QR code */
+      }
+      ul.logs {
+        max-height: 150px;
+        padding: 15px 15px 15px 30px;
+        margin-top: 5px;
+        border-radius: 4px;
+        overflow-y: auto;
+        background: #efefef;
+        color: #666;
+        font-size: 14px;
+        display: none; /* Initially hide the QR code */
+      }
+      ul.logs li:first-child {
+        color: green;
       }
     </style>
   </head>
   <body>
-    <section>
-      Hello from Chatify!
-    </section>
+    <div id="app">
+      <h1>WhatsApp Multi-Client Connection2</h1>
+      <div class="form-container">
+        <label for="clientId">Client ID</label><br />
+        <input type="text" id="clientId" placeholder="Enter Client ID" maxlength="7" /><br />
+        <button id="connectButton" class="connect-btn">Connect</button>
+      </div>
+      <div class="client-container">
+        <div class="client hide">
+          <h3 class="title"></h3>
+          <img src="" alt="QR Code" class="qrCode" />
+          <h3>Logs:</h3>
+          <ul class="logs"></ul>
+        </div>
+      </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      $(document).ready(function () {
+        var socket;
+        var template; // Declare template variable here to make it accessible
+
+        $('#connectButton').click(function () {
+          var clientId = $('#clientId').val().trim();
+          if (clientId) {
+            socket = io({ query: { clientId: clientId } });
+            var clientClass = 'client-' + clientId;
+            template = $('.client').first().clone().removeClass('hide').addClass(clientClass);
+            template.find('.title').html(clientId);
+            template.find('.logs').append($('<li>').text('Connecting...'));
+            $('.client-container').append(template);
+            socket.on('connect', function () {
+              console.log('Connected to server with Client ID:', clientId);
+            });
+            socket.on('qr', function (data) {
+              var qrCodeElement = template.find('.qrCode');
+              qrCodeElement.attr('src', data.url).show();
+              template.find('.logs').prepend($('<li>').text('Scan the QR code to connect.'));
+            });
+            socket.on('message', function (data) {
+              template.find('.logs').prepend($('<li>').text(data.text));
+            });
+            socket.on('ready', function () {
+              template.find('.qrCode').hide();
+              template.find('.logs').prepend($('<li>').text('WhatsApp is ready!'));
+            });
+            socket.on('authenticated', function () {
+              template.find('.qrCode').hide();
+              template.find('.logs').prepend($('<li>').text('Authenticated successfully.'));
+            });
+            socket.on('disconnect', function () {
+              template.find('.logs').prepend($('<li>').text('Disconnected from server.'));
+            });
+          } else {
+            alert('Please enter a Client ID');
+          }
+        });
+
+        // Event listener for receiving QR code moved here
+        socket.on('qr', function (data) {
+          var qrCodeElement = template.find('.qrCode');
+          qrCodeElement.attr('src', data.url).show();
+          template.find('.logs').prepend($('<li>').text('Scan the QR code to connect.'));
+        });
+      });
+    </script>
   </body>
 </html>
