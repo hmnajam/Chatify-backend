@@ -34,6 +34,10 @@
         border: 1px solid rgb(0, 93, 0);
         border-radius: 2px;
       }
+      .connect-btn:disabled {
+        background: gray;
+        cursor: not-allowed;
+      }
       .client-container {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -50,7 +54,7 @@
         margin: 10px 0;
         border: 1px solid #efefef;
         border-radius: 4px;
-        display: none; /* Initially hide the QR code */
+        display: none;
       }
       ul.logs {
         max-height: 150px;
@@ -61,7 +65,7 @@
         background: #efefef;
         color: #666;
         font-size: 14px;
-        display: none; /* Initially hide the QR code */
+        display: none;
       }
       ul.logs li:first-child {
         color: green;
@@ -70,7 +74,7 @@
   </head>
   <body>
     <div id="app">
-      <h1>WhatsApp Multi-Client Connection2</h1>
+      <h1>WhatsApp Multi-Client Connection</h1>
       <div class="form-container">
         <label for="clientId">Client ID</label><br />
         <input type="text" id="clientId" placeholder="Enter Client ID" maxlength="7" /><br />
@@ -90,49 +94,48 @@
     <script>
       $(document).ready(function () {
         var socket;
-        var template; // Declare template variable here to make it accessible
+        var template;
 
-        $('#connectButton').click(function () {
+        $('#connectButton').click(async function () {
           var clientId = $('#clientId').val().trim();
           if (clientId) {
+            $('#connectButton').attr('disabled', true);
+
             socket = io({ query: { clientId: clientId } });
             var clientClass = 'client-' + clientId;
             template = $('.client').first().clone().removeClass('hide').addClass(clientClass);
             template.find('.title').html(clientId);
             template.find('.logs').append($('<li>').text('Connecting...'));
             $('.client-container').append(template);
+
             socket.on('connect', function () {
               console.log('Connected to server with Client ID:', clientId);
             });
+
             socket.on('qr', function (data) {
+              console.log('QR code received for client:', data.clientId);
               var qrCodeElement = template.find('.qrCode');
               qrCodeElement.attr('src', data.url).show();
               template.find('.logs').prepend($('<li>').text('Scan the QR code to connect.'));
+              $('#connectButton').attr('disabled', false);
             });
-            socket.on('message', function (data) {
-              template.find('.logs').prepend($('<li>').text(data.text));
-            });
-            socket.on('ready', function () {
-              template.find('.qrCode').hide();
-              template.find('.logs').prepend($('<li>').text('WhatsApp is ready!'));
-            });
-            socket.on('authenticated', function () {
-              template.find('.qrCode').hide();
-              template.find('.logs').prepend($('<li>').text('Authenticated successfully.'));
-            });
-            socket.on('disconnect', function () {
-              template.find('.logs').prepend($('<li>').text('Disconnected from server.'));
-            });
-          } else {
-            alert('Please enter a Client ID');
-          }
-        });
 
-        // Event listener for receiving QR code moved here
-        socket.on('qr', function (data) {
-          var qrCodeElement = template.find('.qrCode');
-          qrCodeElement.attr('src', data.url).show();
-          template.find('.logs').prepend($('<li>').text('Scan the QR code to connect.'));
+            socket.on('qrstatus', function (data) {
+              console.log('QR status received:', data);
+              template.find('.qrCode').attr('src', data).show();
+              template.find('.logs').prepend($('<li>').text('QR code received, scan.'));
+            });
+
+            socket.on('log', function (log) {
+              console.log('Log received:', log);
+              template.find('.logs').prepend($('<li>').text(log));
+            });
+
+            socket.on('user', function (user) {
+              console.log('User info received:', user);
+              template.find('.logs').prepend($('<li>').text('User: ' + user));
+            });
+          }
         });
       });
     </script>

@@ -83,6 +83,12 @@ async function connectToWhatsApp(clientId) {
       } else if (connection === 'open') {
         console.log(`Client ${clientId} connected`);
         clients[clientId] = sock; // Store the client's socket
+        // Save client ID and auth info to the database
+        await authInfoCollection.updateOne(
+          { clientId: clientId },
+          { $set: { clientId: clientId, authInfo: state } },
+          { upsert: true }
+        );
       }
     });
 
@@ -96,32 +102,6 @@ async function connectToWhatsApp(clientId) {
 const isConnected = () => {
   return sock?.user ? true : false;
 };
-
-// // Update QR code function
-// const updateQR = (data) => {
-//   switch (data) {
-//     case 'qr':
-//       qrcode.toDataURL(qrDinamic, (err, url) => {
-//         soket?.emit('qr', url);
-//         soket?.emit('log', 'QR code received, scan');
-//         console.log('sending qr code');
-//       });
-//       break;
-//     case 'connected':
-//       soket?.emit('qrstatus', './assets/check.svg');
-//       soket?.emit('log', ' User connected');
-//       const { id, name } = sock?.user;
-//       var userinfo = id + ' ' + name;
-//       soket?.emit('user', userinfo);
-//       break;
-//     case 'loading':
-//       soket?.emit('qrstatus', './assets/loader.gif');
-//       soket?.emit('log', 'Loading....');
-//       break;
-//     default:
-//       break;
-//   }
-// };
 
 // Route to send a WhatsApp message
 router.get('/send-message', async (req, res) => {
@@ -173,7 +153,7 @@ router.get('/send-message', async (req, res) => {
   }
 });
 
-// Socket connection event
+// Handle socket connection
 const handleSocketConnection = async (socket) => {
   const clientId = socket.handshake.query.clientId;
   soket = socket;
@@ -193,13 +173,20 @@ const handleSocketConnection = async (socket) => {
 const updateQR = (data, clientId) => {
   switch (data) {
     case 'qr':
+      console.log(`Generating QR code for client ${clientId}`);
       qrcode.toDataURL(qrDinamic, (err, url) => {
+        if (err) {
+          console.error(`Error generating QR code for client ${clientId}:`, err);
+          return;
+        }
+        console.log(`Emitting QR code for client ${clientId} to the frontend`);
         soket?.emit('qr', { url, clientId });
+        console.log(`QR code emitted for client ${clientId}`);
         soket?.emit('log', 'QR code received, scan');
-        console.log(`sending qr code for client ${clientId}`);
       });
       break;
     case 'connected':
+      console.log(`Client ${clientId} connected`);
       soket?.emit('qrstatus', './assets/check.svg');
       soket?.emit('log', `User connected for client ${clientId}`);
       const { id, name } = clients[clientId]?.user;
@@ -207,6 +194,7 @@ const updateQR = (data, clientId) => {
       soket?.emit('user', userinfo);
       break;
     case 'loading':
+      console.log(`Loading for client ${clientId}`);
       soket?.emit('qrstatus', './assets/loader.gif');
       soket?.emit('log', 'Loading....');
       break;
@@ -215,5 +203,4 @@ const updateQR = (data, clientId) => {
   }
 };
 
-// Export the router and socket connection event
 module.exports = { router, handleSocketConnection, connectToWhatsApp };
