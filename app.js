@@ -22,7 +22,12 @@ app.get('/', (req, res) => {
 // Importing Routes
 const routes = require('./routes');
 const { home, scan, allMessages, swaggerUi, swaggerSpecs } = routes;
-const { router: sendMessageRouter, handleSocketConnection, connectToWhatsApp, reconnectClients } = require('./routes/sendMessage');
+const {
+  router: sendMessageRouter,
+  handleSocketConnection,
+  connectToWhatsApp,
+  reconnectClients
+} = require('./routes/sendMessage');
 
 // Socket.io connection
 io.on('connection', (socket) => {
@@ -51,15 +56,8 @@ app.use('/', sendMessageRouter);
 app.use('/', allMessages);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, { explorer: true }));
 
-
-
 reconnectClients().then(() => {
   server.listen(port, () => {
     console.log('Server Running on Port: ' + port);
   });
 });
-
-
-// server.listen(port, () => {
-//   console.log('Server Running on Port: ' + port);
-// });

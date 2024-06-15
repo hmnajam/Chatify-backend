@@ -6,7 +6,7 @@ const { sentMessagesCollection } = require('../mongodb');
 async function getAllMessagesFromDB() {
   try {
     const allMessages = await sentMessagesCollection
-      .find({}, { projection: { recipient: 1, message: 1, timestamp: 1, _id: 0 } })
+      .find({}, { projection: { recipient: 1, message: 1, timestamp: 1, status: 1, _id: 0 } })
       .sort({ timestamp: -1 }) // Sort in descending order based on timestamp
       .limit(20) // Limit the result to the last 20 messages
       .toArray();
