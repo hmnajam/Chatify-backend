@@ -83,7 +83,7 @@ async function connectToWhatsApp(clientId) {
       } else if (connection === 'open') {
         console.log(`Client ${clientId} connected`);
         clients[clientId] = sock; // Store the client's socket
-        
+
         // Save client ID and auth info to the database
         await authInfoCollection.updateOne(
           { clientId: clientId },
@@ -215,6 +215,4 @@ async function reconnectClients() {
   }
 }
 
-
-
-module.exports = { router, handleSocketConnection, connectToWhatsApp , reconnectClients};
+module.exports = { router, handleSocketConnection, connectToWhatsApp, reconnectClients };
