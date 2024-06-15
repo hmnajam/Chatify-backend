@@ -34,10 +34,10 @@ app.use('/assets', express.static(__dirname + '../client/assets'));
 let sock;
 let qrDinamic;
 let soket;
+let clients = {};
+const clientCollection = mongoClient.db('your_db_name').collection('clients');
 
 // Connect to WhatsApp function
-let clients = {};
-
 async function connectToWhatsApp(clientId) {
   try {
     console.log(`Initiating WhatsApp connection for client: ${clientId}`);
@@ -83,10 +83,18 @@ async function connectToWhatsApp(clientId) {
       } else if (connection === 'open') {
         console.log(`Client ${clientId} connected`);
         clients[clientId] = sock; // Store the client's socket
+        
         // Save client ID and auth info to the database
         await authInfoCollection.updateOne(
           { clientId: clientId },
           { $set: { clientId: clientId, authInfo: state } },
+          { upsert: true }
+        );
+
+        // Save the client information to the clients collection
+        await clientCollection.updateOne(
+          { clientId: clientId },
+          { $set: { clientId: clientId, connected: true } },
           { upsert: true }
         );
       }
@@ -97,11 +105,6 @@ async function connectToWhatsApp(clientId) {
     console.log(`Error connecting to WhatsApp for client ${clientId}:`, error);
   }
 }
-
-// Check if connected to WhatsApp
-const isConnected = () => {
-  return sock?.user ? true : false;
-};
 
 // Route to send a WhatsApp message
 router.get('/send-message', async (req, res) => {
@@ -161,7 +164,7 @@ const handleSocketConnection = async (socket) => {
   if (clients[clientId]) {
     updateQR('connected', clientId);
   } else if (qrDinamic) {
-    updateQR('qr', clientId);
+    updateQR('qr', clientId, soket); // Pass soket as an argument
   }
 
   socket.on('disconnect', () => {
@@ -203,4 +206,15 @@ const updateQR = (data, clientId) => {
   }
 };
 
-module.exports = { router, handleSocketConnection, connectToWhatsApp };
+// Reconnect clients on server restart
+async function reconnectClients() {
+  await mongoClient.connect();
+  const clients = await clientCollection.find({ connected: true }).toArray();
+  for (const client of clients) {
+    await connectToWhatsApp(client.clientId);
+  }
+}
+
+
+
+module.exports = { router, handleSocketConnection, connectToWhatsApp , reconnectClients};
