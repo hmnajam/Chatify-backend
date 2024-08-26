@@ -42,6 +42,8 @@ async function connectToWhatsApp(clientId) {
   try {
     console.log(`Initiating WhatsApp connection for client: ${clientId}`);
     await mongoClient.connect();
+    console.log('MongoDB connected successfully');
+
     const { state, saveCreds } = await useMongoDBAuthState(authInfoCollection, clientId);
 
     const sock = makeWASocket({
@@ -52,10 +54,16 @@ async function connectToWhatsApp(clientId) {
     });
 
     sock.ev.on('connection.update', async (update) => {
+
+      console.log(`Connection update for client ${clientId}:`, update);
+      
       const { connection, lastDisconnect, qr } = update;
       qrDinamic = qr;
       if (connection === 'close') {
         let reason = new Boom(lastDisconnect.error).output.statusCode;
+
+        console.log(`Client ${clientId} connection closed with reason: ${reason}`);
+
         if (reason === DisconnectReason.badSession) {
           console.log(`Bad Session File for client ${clientId}, Please Delete and Scan Again`);
           sock.logout();
