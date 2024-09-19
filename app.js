@@ -126,7 +126,7 @@ app.get('/send-message', async (req, res) => {
         // console.log('Checking existence of the number', exist);
         if (exist?.jid || (exist && exist[0]?.jid)) {
           clientSock
-            .sendMessage(exist.jid || exist[0].jid, { text: message })
+            .sendMessage(exist.jid || exist[0].jid, { text: message, linkPreview: true })
             .then(async (result) => {
               // Send the response
               res.status(200).json({ status: true, response: result });
@@ -199,7 +199,7 @@ const updateQR = (data, clientId) => {
 
 // Reconnect clients on server restart
 async function reconnectClients() {
-  await mongoClient.connect();
+  // await mongoClient.connect();
   const clients = await clientCollection.find({ connected: true }).toArray();
   for (const client of clients) {
     await connectToWhatsApp(client.clientId);
