@@ -1,20 +1,17 @@
 require('dotenv').config();
 const express = require('express');
-const router = express.Router();
 const qrcode = require('qrcode');
 const log = require('pino');
-const { session } = { session: 'session_auth_info' };
 const { Boom } = require('@hapi/boom');
 const app = require('express')();
 const server = require('http').createServer(app);
 const bodyParser = require('body-parser');
 const io = require('socket.io')(server);
-const port = process.env.PORT || 7000;
+const port = process.env.PORT || 3000;
 const cors = require('cors');
 const path = require('path');
 const useMongoDBAuthState = require('./mongoAuthState');
 const { mongoClient, authInfoCollection, sentMessagesCollection, clientCollection } = require('./mongodb');
-
 const {
   default: makeWASocket,
   Browsers,
@@ -51,26 +48,20 @@ async function connectToWhatsApp(clientId) {
     console.log(`Initiating WhatsApp connection for client: ${clientId}`);
     await mongoClient.connect();
     console.log('MongoDB connected successfully');
-
     const { state, saveCreds } = await useMongoDBAuthState(authInfoCollection, clientId);
-
     const sock = makeWASocket({
       browser: Browsers.macOS('Chatify'),
       printQRInTerminal: true,
       auth: state,
       logger: log({ level: 'silent' })
     });
-
     sock.ev.on('connection.update', async (update) => {
       console.log(`Connection update for client ${clientId}:`, update);
-
       const { connection, lastDisconnect, qr } = update;
       qrDinamic = qr;
       if (connection === 'close') {
         let reason = new Boom(lastDisconnect.error).output.statusCode;
-
         console.log(`Client ${clientId} connection closed with reason: ${reason}`);
-
         if (reason === DisconnectReason.badSession) {
           console.log(`Bad Session File for client ${clientId}, Please Delete and Scan Again`);
           sock.logout();
@@ -98,14 +89,12 @@ async function connectToWhatsApp(clientId) {
       } else if (connection === 'open') {
         console.log(`Client ${clientId} connected`);
         clients[clientId] = sock; // Store the client's socket
-
         // Save client ID and auth info to the database
         await authInfoCollection.updateOne(
           { clientId: clientId },
           { $set: { clientId: clientId, authInfo: state } },
           { upsert: true }
         );
-
         // Save the client information to the clients collection
         await clientCollection.updateOne(
           { clientId: clientId },
@@ -114,7 +103,6 @@ async function connectToWhatsApp(clientId) {
         );
       }
     });
-
     sock.ev.on('creds.update', saveCreds);
   } catch (error) {
     console.log(`Error connecting to WhatsApp for client ${clientId}:`, error);
@@ -126,15 +114,12 @@ app.get('/send-message', async (req, res) => {
   const { message, number, clientId } = req.query;
   // console.log('Message:', message, 'Number:', number, 'Client:', clientId);
   let numberWA;
-
   try {
     if (!number) {
       return res.status(500).json({ status: false, response: 'The number does not exist' });
     }
-
     numberWA = number + '@s.whatsapp.net';
     const clientSock = clients[clientId];
-
     if (clientSock) {
       try {
         const exist = await clientSock.onWhatsApp(numberWA);
@@ -168,13 +153,11 @@ app.get('/send-message', async (req, res) => {
 const handleSocketConnection = async (socket) => {
   const clientId = socket.handshake.query.clientId;
   soket = socket;
-
   if (clients[clientId]) {
     updateQR('connected', clientId);
   } else if (qrDinamic) {
     updateQR('qr', clientId, soket); // Pass soket as an argument
   }
-
   socket.on('disconnect', () => {
     console.log(`Client ${clientId} disconnected`);
     delete clients[clientId];
@@ -223,8 +206,6 @@ async function reconnectClients() {
   }
 }
 
-module.exports = { router, handleSocketConnection, connectToWhatsApp, reconnectClients };
-
 // Serve the HTML file from the root directory
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
@@ -235,8 +216,6 @@ app.get('/scan', (req, res) => {
   const indexPath = path.join(__dirname, '../client/index.html');
   res.sendFile(indexPath);
 });
-
-module.exports = router;
 
 // Socket.io connection
 io.on('connection', (socket) => {
