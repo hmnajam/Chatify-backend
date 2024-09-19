@@ -13,7 +13,7 @@ const port = process.env.PORT || 7000;
 const cors = require('cors');
 const path = require('path');
 const useMongoDBAuthState = require('./mongoAuthState');
-const { mongoClient, authInfoCollection, sentMessagesCollection } = require('./mongodb');
+const { mongoClient, authInfoCollection, sentMessagesCollection, clientCollection } = require('./mongodb');
 
 const {
   default: makeWASocket,
@@ -44,7 +44,6 @@ let sock;
 let qrDinamic;
 let soket;
 let clients = {};
-const clientCollection = mongoClient.db(process.env.Database).collection(process.env.clients);
 
 // Connect to WhatsApp function
 async function connectToWhatsApp(clientId) {
@@ -125,7 +124,7 @@ async function connectToWhatsApp(clientId) {
 // Route to send a WhatsApp message
 app.get('/send-message', async (req, res) => {
   const { message, number, clientId } = req.query;
-  console.log('Message:', message, 'Number:', number, 'Client:', clientId);
+  // console.log('Message:', message, 'Number:', number, 'Client:', clientId);
   let numberWA;
 
   try {
@@ -137,45 +136,20 @@ app.get('/send-message', async (req, res) => {
     const clientSock = clients[clientId];
 
     if (clientSock) {
-      // Save the message to the database first
       try {
-        const savedMessage = await sentMessagesCollection.insertOne({
-          sender: clientSock.user.id,
-          recipient: numberWA,
-          message: message,
-          timestamp: new Date(),
-          status: 'pending' // Track message status
-        });
-        console.log('Message saved to database successfully', savedMessage.insertedId);
-
         const exist = await clientSock.onWhatsApp(numberWA);
-        console.log('Checking existence of the number', exist);
+        // console.log('Checking existence of the number', exist);
         if (exist?.jid || (exist && exist[0]?.jid)) {
           clientSock
             .sendMessage(exist.jid || exist[0].jid, { text: message })
             .then(async (result) => {
-              // Update message status to 'sent' after successful send
-              await sentMessagesCollection.updateOne({ _id: savedMessage.insertedId }, { $set: { status: 'sent' } });
-              console.log('Message status updated to sent');
-
               // Send the response
               res.status(200).json({ status: true, response: result });
             })
             .catch(async (err) => {
-              // Update message status to 'failed' if there's an error
-              await sentMessagesCollection.updateOne(
-                { _id: savedMessage.insertedId },
-                { $set: { status: 'failed', error: err.message } }
-              );
-              console.error('Error sending message:', err);
               res.status(500).json({ status: false, response: err });
             });
         } else {
-          // Update message status to 'failed' if the number is not on WhatsApp
-          await sentMessagesCollection.updateOne(
-            { _id: savedMessage.insertedId },
-            { $set: { status: 'failed', error: 'This number is not on WhatsApp.' } }
-          );
           res.status(500).json({ status: false, response: 'This number is not on WhatsApp.' });
         }
       } catch (error) {
@@ -268,7 +242,7 @@ module.exports = router;
 io.on('connection', (socket) => {
   const clientId = socket.handshake.query.clientId;
   if (!clientId) {
-    console.log('Client ID not provided');
+    // console.log('Client ID not provided');
     socket.disconnect(true);
     return;
   }
