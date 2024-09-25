@@ -35,7 +35,8 @@ let sock;
 let qrDinamic;
 let soket;
 let clients = {};
-const clientCollection = mongoClient.db(process.env.Database).collection(process.env.clients);
+// const clientCollection = mongoClient.db(process.env.Database).collection(process.env.clients);
+const clientCollection = mongoClient.db('your_db_name').collection('clients');
 
 // Connect to WhatsApp function
 async function connectToWhatsApp(clientId) {
