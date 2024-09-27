@@ -217,6 +217,59 @@ app.get('/scan', (req, res) => {
   res.sendFile(indexPath);
 });
 
+app.get('/generate-qr-code', async (req, res) => {
+  console.log('Request to generate QR code received');
+
+  // Check if qrDinamic is set
+  if (!qrDinamic) {
+    console.log('No QR code available, generating a new one...');
+    const clientId = req.query.clientId; // Get clientId from query params
+    // const clientId = 'hardcode'
+    // Check if clientId is provided
+    if (!clientId) {
+      return res.status(400).json({ error: 'Client ID is required to generate a QR code' });
+    }
+    // Initiate WhatsApp connection for the client to generate a new QR code
+    try {
+      await connectToWhatsApp(clientId); // Initiates connection and generates a new QR code
+    } catch (error) {
+      console.error('Error generating new QR code:', error);
+      return res.status(500).json({ error: 'Failed to generate new QR code' });
+    }
+    // Wait a few seconds for the QR code to be generated
+    let attempts = 0;
+    const maxAttempts = 5; // Maximum attempts to check for the QR code
+
+    const waitForQRCode = setInterval(() => {
+      if (qrDinamic) {
+        clearInterval(waitForQRCode);
+        qrcode
+          .toDataURL(qrDinamic)
+          .then((qrCodeUrl) => {
+            res.json({ qrCodeUrl });
+          })
+          .catch((err) => {
+            console.error('Error generating QR code URL:', err);
+            res.status(500).json({ error: 'Failed to generate QR code' });
+          });
+      } else if (attempts >= maxAttempts) {
+        clearInterval(waitForQRCode);
+        res.status(500).json({ error: 'QR code generation timed out. Please try again.' });
+      }
+      attempts++;
+    }, 1000); // Check every second
+  } else {
+    // QR code is available, generate and return it
+    try {
+      const qrCodeUrl = await qrcode.toDataURL(qrDinamic);
+      res.json({ qrCodeUrl });
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      res.status(500).json({ error: 'Failed to generate QR code' });
+    }
+  }
+});
+
 // Socket.io connection
 io.on('connection', (socket) => {
   const clientId = socket.handshake.query.clientId;
