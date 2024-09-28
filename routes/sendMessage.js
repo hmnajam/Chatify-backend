@@ -243,3 +243,4 @@ async function reconnectClients() {
 }
 
 module.exports = { router, handleSocketConnection, connectToWhatsApp, reconnectClients };
+
