@@ -15,6 +15,7 @@ const mongoClient = new MongoClient(mongoURL, {
 // Mongodb collection configuraion.
 const authInfoCollection = mongoClient.db(process.env.Database).collection(process.env.auth_info);
 const sentMessagesCollection = mongoClient.db(process.env.Database).collection(process.env.Collection);
-const clientCollection = mongoClient.db(process.env.Database).collection(process.env.clients);
+// const clientCollection = mongoClient.db(process.env.Database).collection(process.env.clients);
+const clientCollection = mongoClient.db('your_db_name').collection('clients');
 
 module.exports = { mongoClient, authInfoCollection, sentMessagesCollection, clientCollection};
