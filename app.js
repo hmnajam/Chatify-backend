@@ -280,7 +280,7 @@ app.post('/send-media-message', upload.single('file'), async (req, res) => {
   try {
     const { number, message, clientId } = req.body;
     const file = req.file;
-    console.log('Message:', message, 'Number:', number, 'Client:', clientId, 'File:', file);
+    // console.log('Message:', message, 'Number:', number, 'Client:', clientId, 'File:', file);
     let numberWA;
     if (!number) {
       return res.status(500).json({ status: false, response: 'The number does not exist' });
@@ -290,7 +290,7 @@ app.post('/send-media-message', upload.single('file'), async (req, res) => {
     if (clientSock) {
       try {
         const exist = await clientSock.onWhatsApp(numberWA);
-        console.log('Checking existence of the number', exist);
+        // console.log('Checking existence of the number', exist);
         if (exist?.jid || (exist && exist[0]?.jid)) {
           clientSock
             .sendMessage(exist.jid || exist[0].jid, {
