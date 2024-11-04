@@ -1,7 +1,7 @@
 {
-  "name": "express-hello-world",
-  "version": "1.0.0",
-  "description": "Express Hello World on Render",
+  "name": "chatify-microservice",
+  "version": "1.0.1",
+  "description": "Chatify microservice",
   "main": "app.js",
   "repository": {
     "type": "module",
@@ -34,7 +34,7 @@
     "swagger-ui-express": "^5.0.0"
   },
   "engines": {
-    "node": "20.0.0"
+    "node": "20.16.0"
   },
   "bugs": {
     "url": "https://github.com/render-examples/express-hello-world/issues"
