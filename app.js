@@ -1,13 +1,18 @@
 require('dotenv').config();
 const express = require('express');
+const app = express();
+
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() }); // or diskStorage if needed
+const fs = require('fs');
+
 const qrcode = require('qrcode');
 const log = require('pino');
 const { Boom } = require('@hapi/boom');
-const app = require('express')();
 const server = require('http').createServer(app);
 const bodyParser = require('body-parser');
 const io = require('socket.io')(server);
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8000;
 const cors = require('cors');
 const path = require('path');
 const useMongoDBAuthState = require('./mongoAuthState');
@@ -32,8 +37,8 @@ const {
 } = require('@whiskeysockets/baileys');
 
 // Middleware
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use('/assets', express.static(__dirname + '/client/assets'));
 
@@ -267,6 +272,52 @@ app.get('/generate-qr-code', async (req, res) => {
       console.error('Error generating QR code:', error);
       res.status(500).json({ error: 'Failed to generate QR code' });
     }
+  }
+});
+
+// Route to send a WhatsApp message
+app.post('/send-media-message', upload.single('file'), async (req, res) => {
+  try {
+    const { number, message, clientId } = req.body;
+    const file = req.file;
+    console.log('Message:', message, 'Number:', number, 'Client:', clientId, 'File:', file);
+    let numberWA;
+    if (!number) {
+      return res.status(500).json({ status: false, response: 'The number does not exist' });
+    }
+    numberWA = number + '@s.whatsapp.net';
+    const clientSock = clients[clientId];
+    if (clientSock) {
+      try {
+        const exist = await clientSock.onWhatsApp(numberWA);
+        console.log('Checking existence of the number', exist);
+        if (exist?.jid || (exist && exist[0]?.jid)) {
+          clientSock
+            .sendMessage(exist.jid || exist[0].jid, {
+              document: file.buffer, // Directly use the buffer
+              mimetype: 'application/pdf',
+              fileName: file.originalname,
+              caption: message // Optional caption for the file
+            })
+            .then(async (result) => {
+              // Send the response
+              res.status(200).json({ status: true, response: result });
+            })
+            .catch(async (err) => {
+              res.status(500).json({ status: false, response: err });
+            });
+        } else {
+          res.status(500).json({ status: false, response: 'This number is not on WhatsApp.' });
+        }
+      } catch (error) {
+        console.error('Error saving message to database1:', error);
+        res.status(500).json({ status: false, response: 'Error saving message to database2' });
+      }
+    } else {
+      res.status(500).json({ status: false, response: 'Client is not connected yet bhai ' });
+    }
+  } catch (err) {
+    res.status(500).send(err);
   }
 });
 
