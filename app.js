@@ -73,10 +73,31 @@ async function connectToWhatsApp(clientId) {
           connectToWhatsApp(clientId);
         } else if (reason === DisconnectReason.connectionReplaced) {
           console.log(`Connection replaced for client ${clientId}, please close the current session first`);
-          sock.logout();
+          // sock.logout();
         } else if (reason === DisconnectReason.loggedOut) {
-          console.log(`Device closed for client ${clientId}, remove it and scan again.`);
-          sock.logout();
+          console.log(`Device closed for client ${clientId}, removing auth info and disconnecting.`);
+
+          // Delete auth info from the authInfoCollection
+          const dbId = `${clientId}-creds`; // Add '-creds' to the clientId
+          const result = await authInfoCollection.deleteOne({ _id: dbId });
+
+          if (result.deletedCount === 0) {
+            console.log(`No document found with _id: ${dbId}`);
+          } else {
+            console.log(`Successfully deleted document with _id: ${dbId}`);
+          }
+          console.log('authinfo deleted');
+          // Update the client collection to mark as disconnected
+          await clientCollection.deleteOne({ clientId: clientId });
+          console.log('client collection delelted.');
+
+          console.log('Clients object', clients);
+          // Remove the client from the clients object
+          delete clients[clientId];
+          console.log('Clients object', clients);
+
+          // Logout the client session
+          // await sock.logout();
         } else if (reason === DisconnectReason.restartRequired) {
           console.log(`Restart required for client ${clientId}, restarting...`);
           connectToWhatsApp(clientId);
@@ -280,7 +301,7 @@ async function reconnectClientsAndStartServer() {
     );
     server.listen(port, () => {
       console.log('Server Running on Port:', port);
-      console.log(clients);
+      console.log('Clients object', clients);
     });
   } catch (error) {
     console.error('Error during reconnection process:', error);
