@@ -238,11 +238,10 @@ app.get('/generate-qr-code', async (req, res) => {
   }
   try {
     // Check if the client is already connected
-    if (clients[clientId] ) {
+    if (clients[clientId]) {
       console.log(`Client ${clientId} is already connected.`);
       return res.status(200).json({ message: 'Client is already connected' });
     }
-
     // Check if QR dynamic code exists, otherwise initiate connection
     if (!qrDinamic) {
       console.log('No QR code available, generating a new one...');
