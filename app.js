@@ -56,7 +56,7 @@ async function connectToWhatsApp(clientId) {
       logger: log({ level: 'silent' })
     });
     sock.ev.on('connection.update', async (update) => {
-      console.log(`Connection update for client ${clientId}:`, update);
+      console.log(`Connection update for client-> ${clientId}:`, update);
       const { connection, lastDisconnect, qr } = update;
       qrDinamic = qr;
       if (connection === 'close') {
@@ -108,7 +108,7 @@ async function connectToWhatsApp(clientId) {
           sock.end(`Unknown disconnection reason for client ${clientId}: ${reason}|${lastDisconnect.error}`);
         }
       } else if (connection === 'open') {
-        console.log(`Client ${clientId} connected in connectToWhatsapp`);
+        // console.log(`Client ${clientId} connected in connectToWhatsapp`);
         clients[clientId] = sock; // Store the client's socket
         // Save client ID and auth info to the database
         await authInfoCollection.updateOne(
