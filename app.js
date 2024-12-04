@@ -7,8 +7,8 @@ const qrcode = require('qrcode');
 const log = require('pino');
 const { Boom } = require('@hapi/boom');
 const server = require('http').createServer(app);
-const bodyParser = require('body-parser');
-const io = require('socket.io')(server);
+// const bodyParser = require('body-parser');
+// const io = require('socket.io')(server);
 const port = process.env.PORT || 8000;
 const cors = require('cors');
 const path = require('path');
@@ -40,7 +40,7 @@ app.use(cors());
 app.use('/assets', express.static(__dirname + '/client/assets'));
 
 let qrDinamic;
-let soket;
+// let soket;
 let clients = {};
 
 // Connect to WhatsApp function
@@ -91,10 +91,10 @@ async function connectToWhatsApp(clientId) {
           await clientCollection.deleteOne({ clientId: clientId });
           console.log('client collection delelted.');
 
-          console.log('Clients object', clients);
+          // console.log('Clients object', clients);
           // Remove the client from the clients object
           delete clients[clientId];
-          console.log('Clients object', clients);
+          // console.log('Clients object', clients);
 
           // Logout the client session
           // await sock.logout();
@@ -270,7 +270,7 @@ app.get('/generate-qr-code', async (req, res) => {
     }
     // Poll for QR code availability
     let attempts = 0;
-    const maxAttempts = 5;
+    const maxAttempts = 4;
     const waitForQRCode = setInterval(async () => {
       if (qrDinamic) {
         clearInterval(waitForQRCode);
@@ -301,7 +301,7 @@ async function reconnectClientsAndStartServer() {
     );
     server.listen(port, () => {
       console.log('Server Running on Port:', port);
-      console.log('Clients object', clients);
+      // console.log('Clients object', clients);
     });
   } catch (error) {
     console.error('Error during reconnection process:', error);
